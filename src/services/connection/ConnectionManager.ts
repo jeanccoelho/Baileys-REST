@@ -62,7 +62,7 @@ export class ConnectionManager {
       const sock = makeWASocket({
         auth: state,
         logger: P({ level: 'silent' }),
-        browser: pairingMethod === 'code' ? Browsers.macOS("Desktop") : Browsers.ubuntu("Chrome"),
+        browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
         syncFullHistory: false,
