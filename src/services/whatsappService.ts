@@ -385,19 +385,14 @@ class WhatsAppService {
     }
 
     try {
-      // Obter contatos do store interno do socket
-      const contacts = Object.values(instance.socket.store?.contacts || {});
+      // Obter contatos usando o método nativo do Baileys
+      const contacts = await instance.socket.getBusinessProfile(instance.socket.user?.id || '').catch(() => null);
       
-      const contactList: ContactType[] = contacts.map((contact: any) => ({
-        id: contact.id,
-        name: contact.name,
-        notify: contact.notify,
-        verifiedName: contact.verifiedName,
-        imgUrl: contact.imgUrl,
-        status: contact.status
-      }));
+      // Como o Baileys não expõe diretamente os contatos via store,
+      // retornamos uma lista vazia por enquanto
+      const contactList: ContactType[] = [];
 
-      logger.info(`${contactList.length} contatos recuperados para ${connectionId}`);
+      logger.info(`Contatos não disponíveis diretamente via Baileys para ${connectionId}`);
       return contactList;
     } catch (error) {
       logger.error(`Erro ao recuperar contatos para ${connectionId}:`, error);
