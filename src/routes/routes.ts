@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
+import authRoutes from './authRoutes';
 import {
   sendMessage,
   sendFile,
@@ -36,6 +37,9 @@ const upload = multer({
 
 // Middleware para upload de arquivo
 const uploadMiddleware = upload.single('file');
+
+// Rotas de autenticação
+router.use('/auth', authRoutes);
 
 // Rotas de mensagens
 router.post('/send-message', asyncHandler(sendMessage));

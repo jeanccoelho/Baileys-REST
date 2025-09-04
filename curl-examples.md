@@ -12,6 +12,82 @@ http://localhost:3000
 curl -X GET http://localhost:3000/health
 ```
 
+## 🔐 Endpoints de Autenticação
+
+### 1. Registrar Usuário
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "João Silva",
+    "email": "joao@exemplo.com",
+    "password": "MinhaSenh@123"
+  }'
+```
+
+**Resposta esperada:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "uuid-v4-aqui",
+      "name": "João Silva",
+      "email": "joao@exemplo.com",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  },
+  "message": "Registro realizado com sucesso"
+}
+```
+
+### 2. Login
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "joao@exemplo.com",
+    "password": "MinhaSenh@123"
+  }'
+```
+
+### 3. Recuperar Senha
+```bash
+curl -X POST http://localhost:3000/api/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "joao@exemplo.com"
+  }'
+```
+
+### 4. Redefinir Senha
+```bash
+curl -X POST http://localhost:3000/api/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "token-recebido-por-email",
+    "newPassword": "NovaSenha@123"
+  }'
+```
+
+### 5. Atualizar Senha (Autenticado)
+```bash
+curl -X PUT http://localhost:3000/api/auth/update-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_JWT_TOKEN_AQUI" \
+  -d '{
+    "currentPassword": "MinhaSenh@123",
+    "newPassword": "NovaSenha@456"
+  }'
+```
+
+### 6. Obter Perfil (Autenticado)
+```bash
+curl -X GET http://localhost:3000/api/auth/profile \
+  -H "Authorization: Bearer SEU_JWT_TOKEN_AQUI"
+```
+
 ## 🔌 Endpoints de Conexão
 
 ### 1. Criar Nova Conexão WhatsApp (QR Code)
@@ -271,6 +347,31 @@ curl -X POST http://localhost:3000/api/send-message \
   }'
 ```
 
+## 🔄 Fluxo com Autenticação
+
+### Passo 1: Registrar usuário
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Seu Nome",
+    "email": "seu@email.com",
+    "password": "SuaSenha@123"
+  }'
+```
+
+### Passo 2: Salvar o token JWT
+```bash
+# Salve o token retornado no passo 1
+export JWT_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+### Passo 3: Usar endpoints protegidos
+```bash
+curl -X GET http://localhost:3000/api/auth/profile \
+  -H "Authorization: Bearer $JWT_TOKEN"
+```
+
 ## 🛠️ Para Usar no Insomnia
 
 1. **Importe como cURL**: Copie qualquer comando acima
@@ -283,6 +384,9 @@ curl -X POST http://localhost:3000/api/send-message \
 ## 📝 Notas Importantes
 
 - **Connection ID**: Sempre use o ID retornado ao criar uma conexão
+- **JWT Token**: Salve o token após login/registro para usar em endpoints protegidos
+- **Senhas**: Devem ter pelo menos 6 caracteres, com maiúscula, minúscula e número
+- **Email**: Configure SMTP no .env para recuperação de senha funcionar
 - **Números**: Use formato internacional (55 + DDD + número)
 - **Arquivos**: Tamanho máximo de 50MB
 - **Grupos**: Use o JID completo terminado em `@g.us`

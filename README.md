@@ -2,10 +2,38 @@
 
 API REST completa para WhatsApp usando a biblioteca Baileys v6.7.19.
 
+## Funcionalidades
+
+- ✅ **WhatsApp Multi-Instância**: Múltiplas conexões simultâneas
+- ✅ **Autenticação JWT**: Sistema completo de usuários
+- ✅ **Envio de Mensagens**: Texto e arquivos
+- ✅ **QR Code e Pairing Code**: Dois métodos de conexão
+- ✅ **Validação de Números**: Verificar se número está no WhatsApp
+- ✅ **Recuperação de Senha**: Sistema de reset por email
+
 ## Instalação
 
 ```bash
 npm install
+```
+
+## Configuração
+
+1. Copie o arquivo de exemplo:
+```bash
+cp .env.example .env
+```
+
+2. Configure as variáveis de ambiente no arquivo `.env`:
+```env
+# JWT Secret (OBRIGATÓRIO - mude em produção)
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+
+# Email SMTP (para recuperação de senha)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
 ```
 
 ## Desenvolvimento
@@ -21,7 +49,93 @@ npm run build
 npm start
 ```
 
-## Endpoints Disponíveis
+## 🔐 Endpoints de Autenticação
+
+### `POST /api/auth/register`
+Registra um novo usuário.
+
+**Body:**
+```json
+{
+  "name": "João Silva",
+  "email": "joao@exemplo.com",
+  "password": "MinhaSenh@123"
+}
+```
+
+**Resposta:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "uuid",
+      "name": "João Silva",
+      "email": "joao@exemplo.com",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    },
+    "token": "jwt-token-aqui"
+  }
+}
+```
+
+### `POST /api/auth/login`
+Autentica um usuário.
+
+**Body:**
+```json
+{
+  "email": "joao@exemplo.com",
+  "password": "MinhaSenh@123"
+}
+```
+
+### `POST /api/auth/forgot-password`
+Solicita recuperação de senha.
+
+**Body:**
+```json
+{
+  "email": "joao@exemplo.com"
+}
+```
+
+### `POST /api/auth/reset-password`
+Redefine a senha usando token.
+
+**Body:**
+```json
+{
+  "token": "reset-token-from-email",
+  "newPassword": "NovaSenha@123"
+}
+```
+
+### `PUT /api/auth/update-password`
+Atualiza senha (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
+
+**Body:**
+```json
+{
+  "currentPassword": "SenhaAtual@123",
+  "newPassword": "NovaSenha@123"
+}
+```
+
+### `GET /api/auth/profile`
+Obtém perfil do usuário (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
+
+## 📱 Endpoints do WhatsApp
 
 ### Conexões
 
@@ -135,11 +249,22 @@ Os logs são salvos em:
 ## Observações Importantes
 
 1. **Sessões**: Cada conexão cria uma sessão independente salva em `auth_sessions/`
-2. **Arquivos**: Suporte para envio de imagens, vídeos, áudios e documentos
-3. **QR Code**: Gerado automaticamente como Data URL
-4. **Múltiplas Conexões**: Suporte para múltiplas instâncias WhatsApp simultâneas
-5. **Tratamento de Erros**: Sistema robusto de logs e tratamento de erros
-6. **TypeScript**: Tipagem completa para maior segurança
+2. **Autenticação**: Sistema JWT com tokens que expiram em 7 dias
+3. **Senhas**: Validação rigorosa (maiúscula, minúscula, número, 6+ caracteres)
+4. **Email**: Sistema de recuperação de senha via SMTP
+5. **Arquivos**: Suporte para envio de imagens, vídeos, áudios e documentos
+6. **QR Code**: Gerado automaticamente como Data URL
+7. **Múltiplas Conexões**: Suporte para múltiplas instâncias WhatsApp simultâneas
+8. **Tratamento de Erros**: Sistema robusto de logs e tratamento de erros
+9. **TypeScript**: Tipagem completa para maior segurança
+
+## 🔒 Segurança
+
+- **Senhas**: Hash com bcrypt (12 rounds)
+- **JWT**: Tokens assinados e com expiração
+- **Validação**: Entrada validada em todos os endpoints
+- **Rate Limiting**: Recomendado implementar em produção
+- **HTTPS**: Obrigatório em produção
 
 ## Health Check
 
