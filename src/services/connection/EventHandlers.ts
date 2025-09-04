@@ -99,7 +99,7 @@ export class EventHandlers {
               // await markMessageAsDeleted(deletion.id);
             }
           } else {
-            logger.info(`Mensagem deletada em ${connectionId}: ${deletion.id} de ${deletion.remoteJid}`);
+            logger.info(`Mensagem deletada em ${connectionId}: ${deletions.id} de ${deletions.remoteJid}`);
           }
         } catch (error) {
           logger.error(`Erro no evento messages.delete para ${connectionId}:`, error);
@@ -247,7 +247,7 @@ export class EventHandlers {
               logger.info(`Participantes do grupo ${update.id} ${update.action} em ${connectionId}: ${update.participants.length} usuários`);
             }
           } else {
-            logger.info(`Participantes do grupo ${update.id} ${update.action} em ${connectionId}: ${update.participants.length} usuários`);
+            logger.info(`Participantes do grupo ${updates.id} ${updates.action} em ${connectionId}: ${updates.participants.length} usuários`);
           }
         } catch (error) {
           logger.error(`Erro no evento group-participants.update para ${connectionId}:`, error);
@@ -257,7 +257,6 @@ export class EventHandlers {
       sock.ev.on('connection.update', async (update) => {
         await this.handleConnectionUpdate(update, connectionId, sock);
       });
-
 
     } catch (error) {
       logger.error(`Erro ao configurar event handlers para ${connectionId}:`, error);
@@ -381,7 +380,7 @@ export class EventHandlers {
           clearTimeout(instance.reconnectTimeout);
           instance.reconnectTimeout = undefined;
         }
-          logger.info(`Participantes do grupo ${updates.id} ${updates.action} em ${connectionId}: ${updates.participants.length} usuários`);
+        
         logger.info(`Instância ${connectionId} conectada com número: ${number}`);
       } catch (error) {
         logger.error(`Erro ao obter dados do perfil para ${connectionId}:`, error);
@@ -392,6 +391,6 @@ export class EventHandlers {
         instance.reconnectionAttempts = 0;
         instance.lastActivity = new Date();
       }
-      }
+    }
   }
 }
