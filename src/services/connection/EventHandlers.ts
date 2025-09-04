@@ -3,6 +3,7 @@ import { Boom } from '@hapi/boom';
 import QRCode from 'qrcode';
 import logger from '../../utils/logger';
 import { InstanceData } from '../types/InstanceData';
+import { MessageHandler } from '../messaging/MessageHandler';
 
 export class EventHandlers {
   constructor(
@@ -40,11 +41,25 @@ export class EventHandlers {
           if (type === 'notify') {
             // Novas mensagens em tempo real
             for (const message of messages) {
-              logger.info(`Nova mensagem recebida em ${connectionId} de ${message.key.remoteJid}`);
+              const processedMessage = MessageHandler.processMessage(message);
+              if (processedMessage) {
+                logger.info(`Nova mensagem recebida em ${connectionId}: ${MessageHandler.formatForLog(processedMessage)}`);
+                
+                // Aqui você pode salvar a mensagem no banco de dados
+                // await saveMessageToDatabase(processedMessage);
+              }
             }
           } else {
             // Mensagens antigas já vistas/processadas
-            logger.debug(`Mensagens antigas processadas em ${connectionId}: ${messages.length}`);
+            for (const message of messages) {
+              const processedMessage = MessageHandler.processMessage(message);
+              if (processedMessage) {
+                logger.debug(`Mensagem histórica processada em ${connectionId}: ${MessageHandler.formatForLog(processedMessage)}`);
+                
+                // Aqui você pode salvar mensagens históricas no banco de dados
+                // await saveMessageToDatabase(processedMessage);
+              }
+            }
           }
           
           const instance = this.instances.get(connectionId);
@@ -58,7 +73,12 @@ export class EventHandlers {
 
       sock.ev.on('messages.update', async (updates) => {
         try {
-          logger.debug(`Atualizações de mensagem em ${connectionId}: ${updates.length}`);
+          for (const update of updates) {
+            logger.debug(`Mensagem atualizada em ${connectionId}: ${update.key.id} - Status: ${JSON.stringify(update.update)}`);
+            
+            // Aqui você pode atualizar o status da mensagem no banco de dados
+            // await updateMessageStatus(update.key.id, update.update);
+          }
           
           const instance = this.instances.get(connectionId);
           if (instance) {
@@ -71,7 +91,12 @@ export class EventHandlers {
 
       sock.ev.on('messages.delete', async (deletions) => {
         try {
-          logger.info(`Mensagens deletadas em ${connectionId}: ${deletions.keys.length}`);
+          for (const deletion of deletions.keys) {
+            logger.info(`Mensagem deletada em ${connectionId}: ${deletion.id} de ${deletion.remoteJid}`);
+            
+            // Aqui você pode marcar a mensagem como deletada no banco de dados
+            // await markMessageAsDeleted(deletion.id);
+          }
         } catch (error) {
           logger.error(`Erro no evento messages.delete para ${connectionId}:`, error);
         }
@@ -80,7 +105,11 @@ export class EventHandlers {
       sock.ev.on('messages.reaction', async (reactions) => {
         try {
           for (const reaction of reactions) {
-            logger.info(`Reação ${reaction.reaction.text || 'removida'} em mensagem de ${reaction.key.remoteJid} em ${connectionId}`);
+            const reactionText = reaction.reaction.text || 'removida';
+            logger.info(`Reação "${reactionText}" em mensagem ${reaction.key.id} de ${reaction.key.remoteJid} em ${connectionId}`);
+            
+            // Aqui você pode salvar a reação no banco de dados
+            // await saveReaction(reaction.key.id, reaction.reaction);
           }
         } catch (error) {
           logger.error(`Erro no evento messages.reaction para ${connectionId}:`, error);
@@ -89,7 +118,12 @@ export class EventHandlers {
 
       sock.ev.on('message-receipt.update', async (receipts) => {
         try {
-          logger.debug(`Recibos de mensagem atualizados em ${connectionId}: ${receipts.length}`);
+          for (const receipt of receipts) {
+            logger.debug(`Recibo atualizado em ${connectionId}: ${receipt.key.id} - ${receipt.receipt.receiptTimestamp}`);
+            
+            // Aqui você pode atualizar os recibos de leitura no banco de dados
+            // await updateMessageReceipt(receipt.key.id, receipt.receipt);
+          }
         } catch (error) {
           logger.error(`Erro no evento message-receipt.update para ${connectionId}:`, error);
         }

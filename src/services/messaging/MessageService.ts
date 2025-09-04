@@ -1,6 +1,7 @@
 import { delay } from '@whiskeysockets/baileys';
 import logger from '../../utils/logger';
 import { InstanceData } from '../types/InstanceData';
+import { MessageHandler } from './MessageHandler';
 
 export class MessageService {
   constructor(private instances: Map<string, InstanceData>) {}
@@ -26,7 +27,7 @@ export class MessageService {
       await instance.socket.sendMessage(jid, { text: message });
       
       instance.lastActivity = new Date();
-      logger.info(`Mensagem enviada de ${connectionId} para ${to}`);
+      logger.info(`Mensagem enviada de ${connectionId} para ${to}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
     } catch (error) {
       logger.error(`Erro ao enviar mensagem de ${connectionId}:`, error);
       throw error;
@@ -70,9 +71,34 @@ export class MessageService {
       await instance.socket.sendMessage(jid, messageContent);
       
       instance.lastActivity = new Date();
-      logger.info(`Arquivo enviado de ${connectionId} para ${to}`);
+      logger.info(`Arquivo enviado de ${connectionId} para ${to}: ${fileName} (${mimetype})`);
     } catch (error) {
       logger.error(`Erro ao enviar arquivo de ${connectionId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Baixa mídia de uma mensagem
+   */
+  async downloadMedia(connectionId: string, message: any): Promise<Buffer | null> {
+    const instance = this.instances.get(connectionId);
+    
+    if (!instance || instance.status !== 'connected') {
+      throw new Error('Conexão não encontrada ou não conectada');
+    }
+
+    try {
+      if (!MessageHandler.hasMedia(message)) {
+        throw new Error('Mensagem não contém mídia');
+      }
+
+      const buffer = await instance.socket.downloadMediaMessage(message);
+      logger.info(`Mídia baixada de ${connectionId}: ${buffer?.length || 0} bytes`);
+      
+      return buffer || null;
+    } catch (error) {
+      logger.error(`Erro ao baixar mídia de ${connectionId}:`, error);
       throw error;
     }
   }
