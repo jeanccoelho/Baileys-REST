@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { Request, Response, NextFunction } from 'express';
 import {
   sendMessage,
   sendFile,
@@ -18,6 +17,11 @@ import {
 } from '../controllers/connectionController';
 import { asyncHandler } from '../middleware/errorHandler';
 
+// Tipos explícitos para evitar conflitos
+type ExpressRequest = Express.Request;
+type ExpressResponse = Express.Response;
+type ExpressNextFunction = Express.NextFunction;
+
 const router = Router();
 
 // Configurar multer para upload de arquivos
@@ -34,7 +38,20 @@ const upload = multer({
 
 // Rotas de mensagens
 router.post('/send-message', asyncHandler(sendMessage));
-router.post('/send-file', upload.single('file'), (req: Request, res: Response, next: NextFunction) => {
+
+// Rota de envio de arquivo com tratamento específico
+router.post('/send-file', (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        error: err.message,
+        message: 'File upload failed'
+      });
+    }
+    next();
+  });
+}, (req, res, next) => {
   // Verificar se houve erro no upload
   if (req.file === undefined && req.body.file === undefined) {
     return res.status(400).json({
@@ -47,7 +64,7 @@ router.post('/send-file', upload.single('file'), (req: Request, res: Response, n
 }, asyncHandler(sendFile));
 
 // Middleware de tratamento de erros do multer
-router.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+router.use((error: Error, req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
   if (error instanceof multer.MulterError) {
     return res.status(400).json({
       success: false,
