@@ -281,18 +281,20 @@ export class EventHandlers {
       
       // Gerar código de emparelhamento quando socket estiver conectando
       if (connection === 'connecting' && instance && instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
-        // Aguardar um pouco para o socket estar pronto
+        // Tentar gerar código via event handler como backup
         setTimeout(async () => {
-          try {
-            const code = await sock.requestPairingCode(instance.phoneNumber!);
-            instance.pairingCode = code;
-            instance.status = 'code_pending';
-            logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
-          } catch (error) {
-            logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
-            instance.status = 'disconnected';
+          if (!instance.pairingCode) {
+            try {
+              const code = await sock.requestPairingCode(instance.phoneNumber!);
+              instance.pairingCode = code;
+              instance.status = 'code_pending';
+              logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
+            } catch (error) {
+              logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
+              instance.status = 'disconnected';
+            }
           }
-        }, 2000);
+        }, 1000);
       }
 
       if (connection === 'close') {
