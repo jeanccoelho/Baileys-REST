@@ -99,7 +99,7 @@ export class EventHandlers {
               // await markMessageAsDeleted(deletion.id);
             }
           } else {
-            logger.info(`Mensagem deletada em ${connectionId}: ${deletions.id} de ${deletions.remoteJid}`);
+            logger.info(`Mensagem deletada em ${connectionId}: ${deletion.id} de ${deletion.remoteJid}`);
           }
         } catch (error) {
           logger.error(`Erro no evento messages.delete para ${connectionId}:`, error);
@@ -392,6 +392,6 @@ export class EventHandlers {
         instance.reconnectionAttempts = 0;
         instance.lastActivity = new Date();
       }
-    }
+      }
   }
 }
