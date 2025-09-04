@@ -1,6 +1,7 @@
 import logger from '../../utils/logger';
 import { Contact as ContactType, Group, ValidatedNumber } from '../../types/types';
 import { InstanceData } from '../types/InstanceData';
+import { Contact } from '@whiskeysockets/baileys';
 
 export class ContactService {
   constructor(private instances: Map<string, InstanceData>) {}
@@ -13,11 +14,53 @@ export class ContactService {
     }
 
     try {
-      // Como o Baileys não expõe diretamente os contatos via store,
-      // retornamos uma lista vazia por enquanto
+      // Acessar o store personalizado que contém os contatos sincronizados
+      const store = instance.store;
       const contactList: ContactType[] = [];
 
-      logger.info(`Contatos não disponíveis diretamente via Baileys para ${connectionId}`);
+      if (store && store.contacts) {
+        // Converter contatos do store para o formato da API
+        for (const [jid, contact] of Object.entries(store.contacts)) {
+          const baileyContact = contact as Contact;
+          
+          // Filtrar apenas contatos válidos (não grupos, não broadcast)
+          if (jid.endsWith('@s.whatsapp.net')) {
+            contactList.push({
+              id: jid,
+              name: baileyContact.name || baileyContact.notify || undefined,
+              notify: baileyContact.notify || undefined,
+              verifiedName: baileyContact.verifiedName || undefined,
+              imgUrl: undefined, // Será obtido separadamente se necessário
+              status: undefined  // Será obtido separadamente se necessário
+            });
+          }
+        }
+      }
+
+      // Se não há contatos no store, tentar obter de outra forma
+      if (contactList.length === 0) {
+        logger.info(`Nenhum contato encontrado no store para ${connectionId}, tentando método alternativo`);
+        
+        // Tentar obter contatos através de chats do store
+        const chats = store?.chats;
+        if (chats) {
+          for (const [jid, chat] of Object.entries(chats)) {
+            if (jid.endsWith('@s.whatsapp.net')) {
+              const chatData = chat as any;
+              contactList.push({
+                id: jid,
+                name: chatData.name || chatData.notify || undefined,
+                notify: chatData.notify || undefined,
+                verifiedName: chatData.verifiedName || undefined,
+                imgUrl: undefined,
+                status: undefined
+              });
+            }
+          }
+        }
+      }
+
+      logger.info(`${contactList.length} contatos recuperados para ${connectionId}`);
       return contactList;
     } catch (error) {
       logger.error(`Erro ao recuperar contatos para ${connectionId}:`, error);

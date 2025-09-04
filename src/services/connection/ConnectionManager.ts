@@ -11,6 +11,7 @@ import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
 import P from 'pino';
+import { makeInMemoryStore } from '@whiskeysockets/baileys';
 import logger from '../../utils/logger';
 import { WhatsAppConnection } from '../../types/types';
 import { InstanceData } from '../types/InstanceData';
@@ -59,22 +60,29 @@ export class ConnectionManager {
     try {
       const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
+      // Criar store personalizado para capturar dados
+      const store = makeInMemoryStore({ logger: P({ level: 'silent' }) });
+
       const sock = makeWASocket({
         auth: state,
         logger: P({ level: 'silent' }),
         browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
-        syncFullHistory: false,
+        syncFullHistory: true,
         shouldSyncHistoryMessage: () => true, // Habilitar sync de histórico
         getMessage: async (key) => {
           return { conversation: '' };
         }
       });
 
+      // Conectar o store ao socket
+      store.bind(sock.ev);
+
       const instanceData: InstanceData = {
         instanceId: connectionId,
         socket: sock,
+        store: store,
         status: 'connecting',
         reconnectionAttempts: 0,
         shouldBeConnected: true,
@@ -238,22 +246,29 @@ export class ConnectionManager {
     try {
       const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
+      // Criar store personalizado para capturar dados
+      const store = makeInMemoryStore({ logger: P({ level: 'silent' }) });
+
       const sock = makeWASocket({
         auth: state,
         logger: P({ level: 'silent' }),
         browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
-        syncFullHistory: false,
+        syncFullHistory: true,
         shouldSyncHistoryMessage: () => true,
         getMessage: async (key) => {
           return { conversation: '' };
         }
       });
 
+      // Conectar o store ao socket
+      store.bind(sock.ev);
+
       const instanceData: InstanceData = {
         instanceId: connectionId,
         socket: sock,
+        store: store,
         status: 'connecting',
         reconnectionAttempts: 0,
         shouldBeConnected: true,
@@ -429,22 +444,29 @@ export class ConnectionManager {
     try {
       const { state, saveCreds } = await useMultiFileAuthState(authPath);
 
+      // Criar store personalizado para capturar dados
+      const store = makeInMemoryStore({ logger: P({ level: 'silent' }) });
+
       const sock = makeWASocket({
         auth: state,
         logger: P({ level: 'silent' }),
         browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
-        syncFullHistory: false,
+        syncFullHistory: true,
         shouldSyncHistoryMessage: () => true, // Habilitar sync de histórico
         getMessage: async (key) => {
           return { conversation: '' };
         }
       });
 
+      // Conectar o store ao socket
+      store.bind(sock.ev);
+
       const instanceData: InstanceData = {
         instanceId,
         socket: sock,
+        store: store,
         status: 'connecting',
         reconnectionAttempts: 0,
         shouldBeConnected: true,
