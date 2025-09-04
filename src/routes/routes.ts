@@ -10,7 +10,9 @@ import {
 } from '../controllers/messageController';
 import {
   getContacts,
-  getGroups
+  getGroups,
+  getChats,
+  getMessages
 } from '../controllers/contactController';
 import {
   createConnection,
@@ -53,6 +55,8 @@ router.post('/validate-number', authenticate, asyncHandler(validateNumber));
 // Rotas de contatos (protegidas)
 router.get('/contacts/:connectionId', authenticate, asyncHandler(getContacts));
 router.get('/groups/:connectionId', authenticate, asyncHandler(getGroups));
+router.get('/chats/:connectionId', authenticate, asyncHandler(getChats));
+router.get('/messages/:connectionId', authenticate, asyncHandler(getMessages));
 
 // Rotas de conexão (protegidas)
 router.post('/connection', authenticate, asyncHandler(createConnection));

@@ -46,6 +46,93 @@ export const getContacts = async (
   }
 };
 
+export const getChats = async (
+  req: Request<{ connectionId: string }>,
+  res: Response<ApiResponse>
+): Promise<void> => {
+  try {
+    const { connectionId } = req.params;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
+    
+    if (!connectionId) {
+      res.status(400).json({
+        success: false,
+        error: 'Connection ID is required',
+        message: 'Missing connection ID parameter'
+      });
+      return;
+    }
+
+    const chats = await whatsappService.getChats(userId, connectionId);
+    
+    res.json({
+      success: true,
+      data: chats,
+      message: 'Chats retrieved successfully'
+    });
+  } catch (error) {
+    logger.error('Error retrieving chats:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      message: 'Failed to retrieve chats'
+    });
+  }
+};
+
+export const getMessages = async (
+  req: Request<{ connectionId: string }>,
+  res: Response<ApiResponse>
+): Promise<void> => {
+  try {
+    const { connectionId } = req.params;
+    const { limit } = req.query;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
+    
+    if (!connectionId) {
+      res.status(400).json({
+        success: false,
+        error: 'Connection ID is required',
+        message: 'Missing connection ID parameter'
+      });
+      return;
+    }
+
+    const limitNumber = limit ? parseInt(limit as string, 10) : 50;
+    const messages = await whatsappService.getMessages(userId, connectionId, limitNumber);
+    
+    res.json({
+      success: true,
+      data: messages,
+      message: 'Messages retrieved successfully'
+    });
+  } catch (error) {
+    logger.error('Error retrieving messages:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      message: 'Failed to retrieve messages'
+    });
+  }
+};
 export const getGroups = async (
   req: Request<{ connectionId: string }>,
   res: Response<ApiResponse>

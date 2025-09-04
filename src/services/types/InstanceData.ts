@@ -16,4 +16,9 @@ export interface InstanceData {
   lastActivity?: Date;
   pairingMethod: 'qr' | 'code';
   phoneNumber?: string;
+  // Dados de histórico
+  chats?: any[];
+  contacts?: any[];
+  messages?: any[];
+  lastHistorySync?: Date;
 }

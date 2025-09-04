@@ -13,12 +13,24 @@ export class ContactService {
     }
 
     try {
-      // Como o Baileys não expõe diretamente os contatos via store,
-      // retornamos uma lista vazia por enquanto
-      const contactList: ContactType[] = [];
+      // Usar contatos armazenados do histórico se disponíveis
+      if (instance.contacts && instance.contacts.length > 0) {
+        const contactList: ContactType[] = instance.contacts.map((contact: any) => ({
+          id: contact.id,
+          name: contact.name || contact.notify,
+          notify: contact.notify,
+          verifiedName: contact.verifiedName,
+          imgUrl: contact.imgUrl,
+          status: contact.status
+        }));
+        
+        logger.info(`${contactList.length} contatos retornados do histórico para ${connectionId}`);
+        return contactList;
+      }
 
-      logger.info(`Contatos não disponíveis diretamente via Baileys para ${connectionId}`);
-      return contactList;
+      // Se não há contatos no histórico, retornar lista vazia
+      logger.info(`Nenhum contato disponível no histórico para ${connectionId}`);
+      return [];
     } catch (error) {
       logger.error(`Erro ao recuperar contatos para ${connectionId}:`, error);
       throw error;
@@ -54,6 +66,78 @@ export class ContactService {
       return groupList;
     } catch (error) {
       logger.error(`Erro ao recuperar grupos para ${connectionId}:`, error);
+      throw error;
+    }
+  }
+
+  async getChats(userId: string, connectionId: string): Promise<any[]> {
+    const instance = this.instances.get(connectionId);
+    
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
+    }
+
+    try {
+      // Usar chats armazenados do histórico se disponíveis
+      if (instance.chats && instance.chats.length > 0) {
+        const chatList = instance.chats.map((chat: any) => ({
+          id: chat.id,
+          name: chat.name,
+          conversationTimestamp: chat.conversationTimestamp,
+          unreadCount: chat.unreadCount || 0,
+          archived: chat.archived || false,
+          pinned: chat.pinned || false,
+          muteEndTime: chat.muteEndTime,
+          lastMessageTime: chat.lastMessageTime
+        }));
+        
+        logger.info(`${chatList.length} chats retornados do histórico para ${connectionId}`);
+        return chatList;
+      }
+
+      // Se não há chats no histórico, retornar lista vazia
+      logger.info(`Nenhum chat disponível no histórico para ${connectionId}`);
+      return [];
+    } catch (error) {
+      logger.error(`Erro ao recuperar chats para ${connectionId}:`, error);
+      throw error;
+    }
+  }
+
+  async getMessages(userId: string, connectionId: string, limit: number = 50): Promise<any[]> {
+    const instance = this.instances.get(connectionId);
+    
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
+    }
+
+    try {
+      // Usar mensagens armazenadas do histórico se disponíveis
+      if (instance.messages && instance.messages.length > 0) {
+        // Ordenar por timestamp (mais recentes primeiro) e aplicar limite
+        const sortedMessages = instance.messages
+          .sort((a: any, b: any) => (b.messageTimestamp || 0) - (a.messageTimestamp || 0))
+          .slice(0, limit);
+        
+        const messageList = sortedMessages.map((msg: any) => ({
+          id: msg.key?.id,
+          from: msg.key?.remoteJid,
+          participant: msg.key?.participant,
+          timestamp: msg.messageTimestamp,
+          message: msg.message,
+          isFromMe: msg.key?.fromMe || false,
+          status: msg.status
+        }));
+        
+        logger.info(`${messageList.length} mensagens retornadas do histórico para ${connectionId} (limite: ${limit})`);
+        return messageList;
+      }
+
+      // Se não há mensagens no histórico, retornar lista vazia
+      logger.info(`Nenhuma mensagem disponível no histórico para ${connectionId}`);
+      return [];
+    } catch (error) {
+      logger.error(`Erro ao recuperar mensagens para ${connectionId}:`, error);
       throw error;
     }
   }

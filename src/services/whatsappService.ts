@@ -81,6 +81,15 @@ class WhatsAppService {
     return this.contactService.getGroups(userId, connectionId);
   }
 
+  // Novos métodos para chats e mensagens
+  async getChats(userId: string, connectionId: string): Promise<any[]> {
+    return this.contactService.getChats(userId, connectionId);
+  }
+
+  async getMessages(userId: string, connectionId: string, limit?: number): Promise<any[]> {
+    return this.contactService.getMessages(userId, connectionId, limit);
+  }
+
   async validateNumber(userId: string, connectionId: string, number: string): Promise<ValidatedNumber> {
     return this.contactService.validateNumber(userId, connectionId, number);
   }

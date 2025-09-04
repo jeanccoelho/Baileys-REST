@@ -28,6 +28,23 @@ export class EventHandlers {
           
           const instance = this.instances.get(connectionId);
           if (instance) {
+            // Armazenar dados de histórico na instância
+            if (chats && chats.length > 0) {
+              instance.chats = chats;
+              logger.info(`${chats.length} chats armazenados para ${connectionId}`);
+            }
+            
+            if (contacts && contacts.length > 0) {
+              instance.contacts = contacts;
+              logger.info(`${contacts.length} contatos armazenados para ${connectionId}`);
+            }
+            
+            if (messages && messages.length > 0) {
+              instance.messages = messages;
+              logger.info(`${messages.length} mensagens armazenadas para ${connectionId}`);
+            }
+            
+            instance.lastHistorySync = new Date();
             instance.lastActivity = new Date();
           }
         } catch (error) {
