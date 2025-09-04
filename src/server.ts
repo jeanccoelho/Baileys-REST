@@ -26,7 +26,11 @@ process.on('SIGINT', () => {
 
 // Tratamento de erros não capturados
 process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error);
+  logger.error('Uncaught Exception:', {
+    message: error.message,
+    stack: error.stack,
+    name: error.name
+  });
   // Não sair do processo imediatamente em desenvolvimento
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
@@ -34,7 +38,11 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled Rejection:', {
+    reason: reason,
+    promise: promise,
+    stack: reason instanceof Error ? reason.stack : undefined
+  });
   // Não sair do processo imediatamente em desenvolvimento
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);

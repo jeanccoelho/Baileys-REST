@@ -6,7 +6,8 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   Browsers,
   Contact,
-  delay
+  delay,
+  makeCacheableSignalKeyStore
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import { v4 as uuidv4 } from 'uuid';
@@ -80,14 +81,29 @@ class WhatsAppService {
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
     const { version } = await fetchLatestBaileysVersion();
 
+    // Configuração mais robusta do socket
     const sock = makeWASocket({
       printQRInTerminal: false,
       auth: state,
-      browser: Browsers.macOS("Desktop"),
+      browser: Browsers.ubuntu("Chrome"),
       syncFullHistory: false,
       version,
-      logger: logger as any,
-      shouldSyncHistoryMessage: () => false
+      logger: undefined, // Desabilitar logs internos do Baileys
+      shouldSyncHistoryMessage: () => false,
+      generateHighQualityLinkPreview: false,
+      markOnlineOnConnect: false,
+      retryRequestDelayMs: 250,
+      maxMsgRetryCount: 3,
+      connectTimeoutMs: 60_000,
+      defaultQueryTimeoutMs: 60_000,
+      keepAliveIntervalMs: 10_000,
+      emitOwnEvents: false,
+      fireInitQueries: false,
+      auth: {
+        ...state,
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(state.keys, logger as any)
+      }
     });
 
     let qrCode: string | undefined;
@@ -106,10 +122,20 @@ class WhatsAppService {
     this.instances.set(connectionId, instanceData);
 
     // Event handlers
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', async () => {
+      try {
+        await saveCreds();
+      } catch (error) {
+        logger.error(`Erro ao salvar credenciais para ${connectionId}:`, error);
+      }
+    });
 
     sock.ev.on('contacts.upsert', async (contacts: Contact[]) => {
-      logger.info(`Recebidos ${contacts.length} contatos para ${connectionId}`);
+      try {
+        logger.info(`Recebidos ${contacts.length} contatos para ${connectionId}`);
+      } catch (error) {
+        logger.error(`Erro no evento contacts.upsert para ${connectionId}:`, error);
+      }
     });
 
     sock.ev.on('connection.update', async (update) => {
@@ -117,6 +143,17 @@ class WhatsAppService {
       const instance = this.instances.get(connectionId);
 
       try {
+        if (qr && instance && instance.pairingMethod === 'qr') {
+          try {
+            qrCode = await QRCode.toDataURL(qr);
+            instance.qr = qrCode;
+            instance.status = 'qr_pending';
+            logger.info(`QR Code atualizado para conexão ${connectionId}`);
+          } catch (error) {
+            logger.error(`Erro ao gerar QR Code para ${connectionId}:`, error);
+          }
+        }
+        
         if ((connection === 'connecting' || qr) && instance) {
           if (instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
             try {
@@ -126,24 +163,16 @@ class WhatsAppService {
               logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
             } catch (error) {
               logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
+              // Se falhar, tentar QR Code como fallback
+              instance.pairingMethod = 'qr';
+              instance.status = 'qr_pending';
             }
           }
-        }
-        
-        if (qr && instance && instance.pairingMethod === 'qr') {
-          try {
-            qrCode = await QRCode.toDataURL(qr);
-            instance.qr = qrCode;
-            logger.info(`QR Code atualizado para conexão ${connectionId}`);
-          } catch (error) {
-            logger.error(`Erro ao gerar QR Code para ${connectionId}:`, error);
-          }
-          instance.status = 'qr_pending';
         }
 
       if (connection === 'close') {
         const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
-        logger.info(`Conexão fechada para ${connectionId}. Razão: ${reason}`);
+        logger.warn(`Conexão fechada para ${connectionId}. Razão: ${reason}`);
         
         if (instance) {
           instance.status = 'disconnected';
@@ -151,22 +180,32 @@ class WhatsAppService {
           const shouldReconnect = 
             reason !== DisconnectReason.loggedOut && 
             instance.shouldBeConnected && 
-            reason !== 403;
+            reason !== 403 &&
+            reason !== 401 &&
+            reason !== DisconnectReason.badSession &&
+            reason !== DisconnectReason.multideviceMismatch;
 
           if (shouldReconnect) {
             const attempts = instance.reconnectionAttempts;
-            const delayTime = Math.min(60000, 1000 * 2 ** attempts);
+            const delayTime = Math.min(30000, 2000 * Math.pow(2, Math.min(attempts, 5)));
             
             logger.info(`Reconectando ${connectionId} em ${delayTime / 1000}s... (tentativa ${attempts + 1})`);
             
             instance.reconnectTimeout = setTimeout(async () => {
-              if (instance.shouldBeConnected) {
+              if (instance.shouldBeConnected && instance.reconnectionAttempts < 10) {
                 instance.reconnectionAttempts++;
-                await this.reconnectInstance(connectionId);
+                try {
+                  await this.reconnectInstance(connectionId);
+                } catch (error) {
+                  logger.error(`Erro na reconexão de ${connectionId}:`, error);
+                }
+              } else {
+                logger.warn(`Máximo de tentativas de reconexão atingido para ${connectionId}`);
+                await this.cleanup(connectionId);
               }
             }, delayTime);
           } else {
-            logger.info(`Instância ${connectionId} desconectada permanentemente`);
+            logger.warn(`Instância ${connectionId} desconectada permanentemente. Razão: ${reason}`);
             await this.cleanup(connectionId);
           }
         }
@@ -203,10 +242,37 @@ class WhatsAppService {
         }
       }
       } catch (error) {
-        logger.error(`Erro no event handler connection.update para ${connectionId}:`, error);
+        logger.error(`Erro crítico no event handler connection.update para ${connectionId}:`, error);
         if (instance) {
           instance.status = 'disconnected';
+          // Tentar reconectar após erro crítico
+          setTimeout(async () => {
+            try {
+              if (instance.shouldBeConnected && instance.reconnectionAttempts < 5) {
+                instance.reconnectionAttempts++;
+                await this.reconnectInstance(connectionId);
+              }
+            } catch (reconnectError) {
+              logger.error(`Erro na reconexão após erro crítico ${connectionId}:`, reconnectError);
+            }
+          }, 5000);
         }
+      }
+    });
+
+    // Adicionar handler para erros não capturados do socket
+    sock.ev.on('CB:call', (data) => {
+      // Ignorar chamadas para evitar logs desnecessários
+    });
+
+    // Handler para mensagens recebidas (opcional)
+    sock.ev.on('messages.upsert', async (m) => {
+      try {
+        if (instance) {
+          instance.lastActivity = new Date();
+        }
+      } catch (error) {
+        logger.error(`Erro no handler de mensagens para ${connectionId}:`, error);
       }
     });
 
@@ -246,17 +312,36 @@ class WhatsAppService {
     if (!instance || !instance.shouldBeConnected) return;
 
     try {
+      logger.info(`Iniciando reconexão para ${connectionId}...`);
+      
       const authPath = path.join(this.AUTH_DIR, connectionId);
+      
+      if (!fs.existsSync(authPath)) {
+        logger.error(`Pasta de autenticação não encontrada para reconexão ${connectionId}`);
+        await this.cleanup(connectionId);
+        return;
+      }
+      
       const { state, saveCreds } = await useMultiFileAuthState(authPath);
       const { version } = await fetchLatestBaileysVersion();
 
       const sock = makeWASocket({
         printQRInTerminal: false,
         auth: state,
-        browser: Browsers.macOS("Desktop"),
+        browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
         version,
-        logger: logger as any,
+        logger: undefined,
+        shouldSyncHistoryMessage: () => false,
+        generateHighQualityLinkPreview: false,
+        markOnlineOnConnect: false,
+        retryRequestDelayMs: 250,
+        maxMsgRetryCount: 3,
+        connectTimeoutMs: 60_000,
+        defaultQueryTimeoutMs: 60_000,
+        keepAliveIntervalMs: 10_000,
+        emitOwnEvents: false,
+        fireInitQueries: false
       });
 
       instance.socket = sock;
@@ -265,15 +350,89 @@ class WhatsAppService {
       // Reconfigurar event handlers
       this.setupSocketEvents(sock, connectionId, saveCreds);
       
+      logger.info(`Reconexão iniciada com sucesso para ${connectionId}`);
     } catch (error) {
       logger.error(`Erro na reconexão de ${connectionId}:`, error);
       instance.reconnectionAttempts++;
+      
+      if (instance.reconnectionAttempts >= 10) {
+        logger.error(`Máximo de tentativas de reconexão atingido para ${connectionId}`);
+        await this.cleanup(connectionId);
+      }
     }
   }
 
   private setupSocketEvents(sock: WASocket, connectionId: string, saveCreds: () => void): void {
-    sock.ev.on('creds.update', saveCreds);
-    // Adicionar outros event handlers conforme necessário
+    try {
+      sock.ev.on('creds.update', async () => {
+        try {
+          await saveCreds();
+        } catch (error) {
+          logger.error(`Erro ao salvar credenciais na reconexão ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+        const instance = this.instances.get(connectionId);
+
+        try {
+          if (connection === 'close') {
+            const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
+            logger.warn(`Reconexão fechada para ${connectionId}. Razão: ${reason}`);
+            
+            if (instance && instance.shouldBeConnected) {
+              const shouldReconnect = 
+                reason !== DisconnectReason.loggedOut && 
+                reason !== 403 &&
+                reason !== 401 &&
+                reason !== DisconnectReason.badSession &&
+                instance.reconnectionAttempts < 10;
+
+              if (shouldReconnect) {
+                const delayTime = Math.min(30000, 2000 * Math.pow(2, Math.min(instance.reconnectionAttempts, 5)));
+                
+                setTimeout(async () => {
+                  if (instance.shouldBeConnected) {
+                    instance.reconnectionAttempts++;
+                    try {
+                      await this.reconnectInstance(connectionId);
+                    } catch (error) {
+                      logger.error(`Erro na re-reconexão de ${connectionId}:`, error);
+                    }
+                  }
+                }, delayTime);
+              } else {
+                await this.cleanup(connectionId);
+              }
+            }
+          } else if (connection === 'open') {
+            logger.info(`Reconexão bem-sucedida para ${connectionId}`);
+            if (instance) {
+              instance.status = 'connected';
+              instance.reconnectionAttempts = 0;
+              instance.lastActivity = new Date();
+            }
+          }
+        } catch (error) {
+          logger.error(`Erro no handler de reconexão para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('messages.upsert', async (m) => {
+        try {
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
+        } catch (error) {
+          logger.error(`Erro no handler de mensagens na reconexão ${connectionId}:`, error);
+        }
+      });
+
+    } catch (error) {
+      logger.error(`Erro ao configurar event handlers para ${connectionId}:`, error);
+    }
   }
 
   async validateConnection(connectionId: string, code: string): Promise<boolean> {
