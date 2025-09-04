@@ -39,9 +39,9 @@ export class ConnectionManager {
     }
   }
 
-  async createConnection(pairingMethod: 'qr' | 'code' = 'qr', phoneNumber?: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+  async createConnection(userId: string, pairingMethod: 'qr' | 'code' = 'qr', phoneNumber?: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
     const connectionId = uuidv4();
-    const authPath = path.join(this.AUTH_DIR, connectionId);
+    const authPath = path.join(this.AUTH_DIR, userId, connectionId);
     
     if (!fs.existsSync(authPath)) {
       fs.mkdirSync(authPath, { recursive: true });
@@ -76,6 +76,7 @@ export class ConnectionManager {
 
       const instanceData: InstanceData = {
         instanceId: connectionId,
+        userId,
         socket: sock,
         status: 'connecting',
         reconnectionAttempts: 0,
@@ -139,15 +140,15 @@ export class ConnectionManager {
       return result;
     } catch (error) {
       logger.error(`Erro ao criar conexão ${connectionId}:`, error);
-      await this.cleanup(connectionId);
+      await this.cleanup(userId, connectionId);
       throw error;
     }
   }
 
-  async validateConnection(connectionId: string, code: string): Promise<boolean> {
+  async validateConnection(userId: string, connectionId: string, code: string): Promise<boolean> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance) {
+    if (!instance || instance.userId !== userId) {
       throw new Error('Conexão não encontrada');
     }
 
@@ -160,10 +161,10 @@ export class ConnectionManager {
     }
   }
 
-  async removeConnection(connectionId: string): Promise<void> {
+  async removeConnection(userId: string, connectionId: string): Promise<void> {
     const instance = this.instances.get(connectionId);
     
-    if (instance) {
+    if (instance && instance.userId === userId) {
       instance.shouldBeConnected = false;
       
       if (instance.reconnectTimeout) {
@@ -189,7 +190,7 @@ export class ConnectionManager {
       }
     }
     
-    await this.cleanup(connectionId);
+    await this.cleanup(userId, connectionId);
     logger.info(`Conexão ${connectionId} removida com sucesso`);
   }
 
@@ -197,13 +198,13 @@ export class ConnectionManager {
     const disconnectedInstances = Array.from(this.instances.entries())
       .filter(([_, instance]) => instance.status === 'disconnected' && !instance.shouldBeConnected);
     
-    for (const [connectionId, _] of disconnectedInstances) {
+    for (const [connectionId, instance] of disconnectedInstances) {
       logger.info(`Removendo instância desconectada: ${connectionId}`);
-      await this.cleanup(connectionId);
+      await this.cleanup(instance.userId, connectionId);
     }
   }
 
-  async recreateInstance(connectionId: string): Promise<void> {
+  async recreateInstance(userId: string, connectionId: string): Promise<void> {
     const instance = this.instances.get(connectionId);
     if (!instance) return;
 
@@ -214,19 +215,23 @@ export class ConnectionManager {
     const phoneNumber = instance.phoneNumber;
     
     // Cleanup da instância atual
-    await this.cleanup(connectionId);
+    await this.cleanup(userId, connectionId);
 
     // Recriar com os mesmos parâmetros
     try {
-      await this.createConnection(pairingMethod, phoneNumber);
+      await this.createConnection(userId, pairingMethod, phoneNumber);
       logger.info(`Instância ${connectionId} recriada com sucesso`);
     } catch (error) {
       logger.error(`Erro ao recriar instância ${connectionId}:`, error);
     }
   }
 
-  async restartConnection(connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+  async restartConnection(userId: string, connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
     const instance = this.instances.get(connectionId);
+    
+    if (instance && instance.userId !== userId) {
+      throw new Error('Conexão não encontrada ou não autorizada');
+    }
     
     logger.info(`Reiniciando conexão ${connectionId}...`);
     
@@ -254,7 +259,7 @@ export class ConnectionManager {
     }
     
     // Criar nova conexão com mesmo ID
-    const authPath = path.join(this.AUTH_DIR, connectionId);
+    const authPath = path.join(this.AUTH_DIR, userId, connectionId);
     
     if (!fs.existsSync(authPath)) {
       fs.mkdirSync(authPath, { recursive: true });
@@ -278,6 +283,7 @@ export class ConnectionManager {
 
       const instanceData: InstanceData = {
         instanceId: connectionId,
+        userId,
         socket: sock,
         status: 'connecting',
         reconnectionAttempts: 0,
@@ -327,7 +333,7 @@ export class ConnectionManager {
     }
   }
 
-  async cleanup(connectionId: string): Promise<void> {
+  async cleanup(userId: string, connectionId: string): Promise<void> {
     const instance = this.instances.get(connectionId);
     
     if (instance) {
@@ -348,7 +354,7 @@ export class ConnectionManager {
     
     this.instances.delete(connectionId);
     
-    const authPath = path.join(this.AUTH_DIR, connectionId);
+    const authPath = path.join(this.AUTH_DIR, userId, connectionId);
     if (fs.existsSync(authPath)) {
       try {
         fs.rmSync(authPath, { recursive: true, force: true });
@@ -359,9 +365,14 @@ export class ConnectionManager {
     }
   }
 
-  getAllConnections(): WhatsAppConnection[] {
-    return Array.from(this.instances.values()).map(instance => ({
+  getAllConnections(userId?: string): WhatsAppConnection[] {
+    const filteredInstances = userId 
+      ? Array.from(this.instances.values()).filter(instance => instance.userId === userId)
+      : Array.from(this.instances.values());
+      
+    return filteredInstances.map(instance => ({
       id: instance.instanceId,
+      userId: instance.userId,
       status: instance.status,
       phoneNumber: instance.number,
       createdAt: instance.createdAt,
@@ -371,12 +382,13 @@ export class ConnectionManager {
     }));
   }
 
-  getConnection(connectionId: string): WhatsAppConnection | undefined {
+  getConnection(userId: string, connectionId: string): WhatsAppConnection | undefined {
     const instance = this.instances.get(connectionId);
-    if (!instance) return undefined;
+    if (!instance || instance.userId !== userId) return undefined;
 
     return {
       id: instance.instanceId,
+      userId: instance.userId,
       status: instance.status,
       phoneNumber: instance.number,
       createdAt: instance.createdAt,
@@ -397,44 +409,63 @@ export class ConnectionManager {
         return;
       }
 
-      const instanceDirs = fs.readdirSync(this.AUTH_DIR)
+      const userDirs = fs.readdirSync(this.AUTH_DIR)
         .filter(file => fs.statSync(path.join(this.AUTH_DIR, file)).isDirectory());
 
-      if (instanceDirs.length === 0) {
+      if (userDirs.length === 0) {
         logger.info('Nenhuma instância para restaurar');
         return;
       }
 
-      logger.info(`Restaurando ${instanceDirs.length} instâncias...`);
+      let totalInstances = 0;
+      for (const userId of userDirs) {
+        const userPath = path.join(this.AUTH_DIR, userId);
+        const instanceDirs = fs.readdirSync(userPath)
+          .filter(file => fs.statSync(path.join(userPath, file)).isDirectory());
+        totalInstances += instanceDirs.length;
+      }
+
+      logger.info(`Restaurando ${totalInstances} instâncias...`);
 
       // Limpar instâncias antigas primeiro
-      for (const instanceId of instanceDirs) {
-        const authPath = path.join(this.AUTH_DIR, instanceId);
-        const credsPath = path.join(authPath, 'creds.json');
-        
-        // Se não tem credenciais válidas, remover
-        if (!fs.existsSync(credsPath)) {
-          try {
-            fs.rmSync(authPath, { recursive: true, force: true });
-            logger.info(`Instância inválida removida: ${instanceId}`);
-            continue;
-          } catch (error) {
-            logger.error(`Erro ao remover instância inválida ${instanceId}:`, error);
+      for (const userId of userDirs) {
+        const userPath = path.join(this.AUTH_DIR, userId);
+        const instanceDirs = fs.readdirSync(userPath)
+          .filter(file => fs.statSync(path.join(userPath, file)).isDirectory());
+          
+        for (const instanceId of instanceDirs) {
+          const authPath = path.join(userPath, instanceId);
+          const credsPath = path.join(authPath, 'creds.json');
+          
+          // Se não tem credenciais válidas, remover
+          if (!fs.existsSync(credsPath)) {
+            try {
+              fs.rmSync(authPath, { recursive: true, force: true });
+              logger.info(`Instância inválida removida: ${userId}/${instanceId}`);
+              continue;
+            } catch (error) {
+              logger.error(`Erro ao remover instância inválida ${userId}/${instanceId}:`, error);
+            }
           }
         }
       }
 
-      // Recarregar lista após limpeza
-      const validInstanceDirs = fs.readdirSync(this.AUTH_DIR)
-        .filter(file => fs.statSync(path.join(this.AUTH_DIR, file)).isDirectory());
-
-      for (const instanceId of instanceDirs) {
-        try {
-          await this.restoreInstance(instanceId);
-        } catch (error) {
-          logger.error(`Erro ao restaurar instância ${instanceId}:`, error);
-          // Remover instância com erro
-          await this.cleanup(instanceId);
+      // Restaurar instâncias válidas
+      for (const userId of userDirs) {
+        const userPath = path.join(this.AUTH_DIR, userId);
+        if (!fs.existsSync(userPath)) continue;
+        
+        const instanceDirs = fs.readdirSync(userPath)
+          .filter(file => fs.statSync(path.join(userPath, file)).isDirectory());
+          
+        for (const instanceId of instanceDirs) {
+          try {
+            await this.restoreInstance(userId, instanceId);
+          } catch (error) {
+            logger.error(`Erro ao restaurar instância ${userId}/${instanceId}:`, error);
+            // Remover instância com erro
+            await this.cleanup(userId, instanceId);
+          }
         }
       }
     } catch (error) {
@@ -442,11 +473,11 @@ export class ConnectionManager {
     }
   }
 
-  private async restoreInstance(instanceId: string): Promise<void> {
-    const authPath = path.join(this.AUTH_DIR, instanceId);
+  private async restoreInstance(userId: string, instanceId: string): Promise<void> {
+    const authPath = path.join(this.AUTH_DIR, userId, instanceId);
     
     if (!fs.existsSync(authPath)) {
-      logger.warn(`Pasta de autenticação não encontrada para ${instanceId}`);
+      logger.warn(`Pasta de autenticação não encontrada para ${userId}/${instanceId}`);
       return;
     }
 
@@ -468,6 +499,7 @@ export class ConnectionManager {
 
       const instanceData: InstanceData = {
         instanceId,
+        userId,
         socket: sock,
         status: 'connecting',
         reconnectionAttempts: 0,
@@ -479,9 +511,9 @@ export class ConnectionManager {
       this.instances.set(instanceId, instanceData);
       this.eventHandlers.setupSocketEvents(sock, instanceId, saveCreds);
 
-      logger.info(`Instância ${instanceId} restaurada com sucesso`);
+      logger.info(`Instância ${userId}/${instanceId} restaurada com sucesso`);
     } catch (error) {
-      logger.error(`Erro ao restaurar instância ${instanceId}:`, error);
+      logger.error(`Erro ao restaurar instância ${userId}/${instanceId}:`, error);
     }
   }
 }
