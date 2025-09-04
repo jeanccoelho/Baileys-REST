@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import {
   sendMessage,
   sendFile,
@@ -34,14 +34,14 @@ const upload = multer({
   }
 });
 
-// Middleware tipado para upload de arquivo
-const uploadMiddleware: RequestHandler = upload.single('file') as RequestHandler;
+// Middleware para upload de arquivo
+const uploadMiddleware = upload.single('file');
 
 // Rotas de mensagens
 router.post('/send-message', asyncHandler(sendMessage));
 
 // Rota de envio de arquivo com middleware tipado
-router.post('/send-file', uploadMiddleware, asyncHandler(sendFile));
+router.post('/send-file', uploadMiddleware as any, asyncHandler(sendFile));
 
 router.post('/validate-number', asyncHandler(validateNumber));
 
