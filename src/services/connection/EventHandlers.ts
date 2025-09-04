@@ -403,7 +403,8 @@ export class EventHandlers {
         
         try {
           // Primeira tentativa: foto de perfil do próprio usuário
-          profilePicture = await sock.profilePictureUrl(sock.user.id, 'image');
+          const pic1 = await sock.profilePictureUrl(sock.user.id, 'image');
+          profilePicture = pic1 || '';
           logger.info(`Foto de perfil obtida para ${connectionId}: ${profilePicture.substring(0, 50)}...`);
         } catch (error) {
           logger.debug(`Primeira tentativa de foto falhou para ${connectionId}:`, error);
@@ -411,14 +412,16 @@ export class EventHandlers {
           try {
             // Segunda tentativa: usando apenas o número
             const numberJid = `${number}@s.whatsapp.net`;
-            profilePicture = await sock.profilePictureUrl(numberJid, 'image');
+            const pic2 = await sock.profilePictureUrl(numberJid, 'image');
+            profilePicture = pic2 || '';
             logger.info(`Foto de perfil obtida (segunda tentativa) para ${connectionId}: ${profilePicture.substring(0, 50)}...`);
           } catch (error2) {
             logger.debug(`Segunda tentativa de foto falhou para ${connectionId}:`, error2);
             
             try {
               // Terceira tentativa: foto de perfil em baixa resolução
-              profilePicture = await sock.profilePictureUrl(sock.user.id, 'preview');
+              const pic3 = await sock.profilePictureUrl(sock.user.id, 'preview');
+              profilePicture = pic3 || '';
               logger.info(`Foto de perfil (preview) obtida para ${connectionId}: ${profilePicture.substring(0, 50)}...`);
             } catch (error3) {
               logger.warn(`Não foi possível obter foto de perfil para ${connectionId}:`, error3);
