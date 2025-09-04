@@ -6,9 +6,9 @@ import makeWASocket, {
   getAggregateVotesInPollMessage,
   downloadMediaMessage,
   fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-  makeInMemoryStore
+  makeCacheableSignalKeyStore
 } from '@whiskeysockets/baileys';
+import { makeInMemoryStore } from '@whiskeysockets/baileys/lib/Store/make-in-memory-store';
 import { Boom } from '@hapi/boom';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
