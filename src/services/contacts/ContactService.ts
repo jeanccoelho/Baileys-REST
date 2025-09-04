@@ -14,8 +14,8 @@ export class ContactService {
     }
 
     try {
-      // Acessar o store do socket que contém os contatos sincronizados
-      const store = (instance.socket as any).store;
+      // Acessar o store personalizado que contém os contatos sincronizados
+      const store = instance.store;
       const contactList: ContactType[] = [];
 
       if (store && store.contacts) {
@@ -41,8 +41,8 @@ export class ContactService {
       if (contactList.length === 0) {
         logger.info(`Nenhum contato encontrado no store para ${connectionId}, tentando método alternativo`);
         
-        // Tentar obter contatos através de chats recentes
-        const chats = (instance.socket as any).store?.chats;
+        // Tentar obter contatos através de chats do store
+        const chats = store?.chats;
         if (chats) {
           for (const [jid, chat] of Object.entries(chats)) {
             if (jid.endsWith('@s.whatsapp.net')) {
