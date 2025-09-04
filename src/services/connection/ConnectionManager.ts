@@ -3,14 +3,14 @@ import makeWASocket, {
   useMultiFileAuthState, 
   WASocket,
   fetchLatestBaileysVersion,
-  Browsers,
-  delay
+  Browsers
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
 import fs from 'fs';
 import path from 'path';
+import P from 'pino';
 import logger from '../../utils/logger';
 import { WhatsAppConnection } from '../../types/types';
 import { InstanceData } from '../types/InstanceData';
@@ -99,23 +99,28 @@ export class ConnectionManager {
       // Configurar event handlers
       this.eventHandlers.setupSocketEvents(sock, connectionId, saveCreds);
 
-      // Aguardar geração do QR code ou código de emparelhamento
-      let attempts = 0;
-      const maxAttempts = 15;
-      
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Aguardar conexão inicial conforme documentação
+      await new Promise((resolve) => {
+        const timeout = setTimeout(resolve, 10000); // 10s timeout
         
-        if (pairingMethod === 'qr' && instanceData.qr) {
-          break;
-        }
+        const checkConnection = () => {
+          if (pairingMethod === 'qr' && instanceData.qr) {
+            clearTimeout(timeout);
+            resolve(undefined);
+          } else if (pairingMethod === 'code' && instanceData.pairingCode) {
+            clearTimeout(timeout);
+            resolve(undefined);
+          }
+        };
         
-        if (pairingMethod === 'code' && instanceData.pairingCode) {
-          break;
-        }
-        
-        attempts++;
-      }
+        // Verificar a cada 500ms
+        const interval = setInterval(() => {
+          checkConnection();
+          if (instanceData.qr || instanceData.pairingCode) {
+            clearInterval(interval);
+          }
+        }, 500);
+      });
 
       const result: { connectionId: string; qrCode?: string; pairingCode?: string } = {
         connectionId
