@@ -198,6 +198,12 @@ export class ConnectionManager {
     const disconnectedInstances = Array.from(this.instances.entries())
       .filter(([_, instance]) => instance.status === 'disconnected' && !instance.shouldBeConnected);
     
+    if (disconnectedInstances.length === 0) {
+      return;
+    }
+    
+    logger.info(`Limpando ${disconnectedInstances.length} instâncias desconectadas...`);
+    
     for (const [connectionId, instance] of disconnectedInstances) {
       logger.info(`Removendo instância desconectada: ${connectionId}`);
       await this.cleanup(instance.userId, connectionId);
@@ -238,10 +244,11 @@ export class ConnectionManager {
     // Salvar dados da instância (se existir)
     const pairingMethod = instance?.pairingMethod || 'qr';
     const phoneNumber = instance?.phoneNumber;
+    const shouldBeConnected = instance?.shouldBeConnected !== false;
     
     // Limpar instância atual sem remover arquivos de auth
     if (instance) {
-      instance.shouldBeConnected = false;
+      // Não alterar shouldBeConnected se for um restart automático
       
       if (instance.reconnectTimeout) {
         clearTimeout(instance.reconnectTimeout);
@@ -287,7 +294,7 @@ export class ConnectionManager {
         socket: sock,
         status: 'connecting',
         reconnectionAttempts: 0,
-        shouldBeConnected: true,
+        shouldBeConnected,
         createdAt: new Date(),
         pairingMethod,
         phoneNumber
