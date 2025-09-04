@@ -16,7 +16,7 @@ export class ContactStorageController {
     res: Response<ContactResponse>
   ): Promise<void> => {
     try {
-      const { phoneNumber, name } = req.body;
+      const { phone_number, name } = req.body;
       const userId = req.user?.userId;
 
       if (!userId) {
@@ -28,7 +28,7 @@ export class ContactStorageController {
         return;
       }
 
-      if (!phoneNumber) {
+      if (!phone_number) {
         res.status(400).json({
           success: false,
           error: 'Número de telefone é obrigatório',
@@ -37,7 +37,7 @@ export class ContactStorageController {
         return;
       }
 
-      const contact = await this.contactService.createContact(userId, { phoneNumber, name });
+      const contact = await this.contactService.createContact(userId, { phone_number, name });
 
       res.status(201).json({
         success: true,

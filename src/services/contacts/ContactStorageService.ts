@@ -142,7 +142,7 @@ export class ContactStorageService {
       .select('phone_number')
       .eq('user_id', userId);
 
-    const existingNumbers = new Set(existingContacts?.map(c => c.phone_number) || []);
+    const existingNumbers = new Set(existingContacts?.map((c: any) => c.phone_number) || []);
     
     let imported = 0;
     let skipped = 0;

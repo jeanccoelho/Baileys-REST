@@ -38,7 +38,7 @@ router.delete('/:contactId', asyncHandler(contactController.deleteContact));
 router.post('/validate-whatsapp', asyncHandler(contactController.validateContactWhatsApp));
 
 // Importação e limpeza
-router.post('/import', upload.single('file'), asyncHandler(contactController.importContacts));
+router.post('/import', upload.single('file') as any, asyncHandler(contactController.importContacts));
 router.delete('/', asyncHandler(contactController.deleteAllContacts));
 
 export default router;
