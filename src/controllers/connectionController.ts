@@ -8,9 +8,21 @@ export const createConnection = async (
   res: Response<ApiResponse>
 ): Promise<void> => {
   try {
-    const { connectionId, qrCode } = await whatsappService.createConnection();
+    const { pairingMethod = 'qr', phoneNumber } = req.body;
     
-    if (!qrCode) {
+    // Validar parâmetros para código de emparelhamento
+    if (pairingMethod === 'code' && !phoneNumber) {
+      res.status(400).json({
+        success: false,
+        error: 'Phone number is required for pairing code method',
+        message: 'When using pairing code method, phoneNumber must be provided'
+      });
+      return;
+    }
+    
+    const { connectionId, qrCode, pairingCode } = await whatsappService.createConnection(pairingMethod, phoneNumber);
+    
+    if (pairingMethod === 'qr' && !qrCode) {
       // Aguardar um pouco mais e tentar novamente
       await new Promise(resolve => setTimeout(resolve, 2000));
       const connection = whatsappService.getConnection(connectionId);
@@ -19,6 +31,7 @@ export const createConnection = async (
         success: true,
         data: {
           connectionId,
+          pairingMethod,
           qrCode: connection?.qr || null,
           message: connection?.qr ? 'Scan the QR code with your WhatsApp to connect' : 'QR code is being generated, please check status'
         },
@@ -27,13 +40,23 @@ export const createConnection = async (
       return;
     }
     
+    const responseData: any = {
+      connectionId,
+      pairingMethod
+    };
+    
+    if (pairingMethod === 'qr') {
+      responseData.qrCode = qrCode;
+      responseData.message = 'Scan the QR code with your WhatsApp to connect';
+    } else {
+      responseData.pairingCode = pairingCode;
+      responseData.phoneNumber = phoneNumber;
+      responseData.message = `Enter the pairing code ${pairingCode} in your WhatsApp`;
+    }
+    
     res.status(201).json({
       success: true,
-      data: {
-        connectionId,
-        qrCode,
-        message: 'Scan the QR code with your WhatsApp to connect'
-      },
+      data: responseData,
       message: 'Connection created successfully'
     });
   } catch (error) {

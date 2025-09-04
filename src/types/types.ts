@@ -26,6 +26,7 @@ export interface ValidateNumberRequest {
 
 export interface ConnectionRequest {
   phoneNumber?: string;
+  pairingMethod?: 'qr' | 'code';
 }
 
 export interface ValidateConnectionRequest {

@@ -14,10 +14,13 @@ curl -X GET http://localhost:3000/health
 
 ## 🔌 Endpoints de Conexão
 
-### 1. Criar Nova Conexão WhatsApp
+### 1. Criar Nova Conexão WhatsApp (QR Code)
 ```bash
 curl -X POST http://localhost:3000/api/connection \
   -H "Content-Type: application/json"
+  -d '{
+    "pairingMethod": "qr"
+  }'
 ```
 
 **Resposta esperada:**
@@ -26,7 +29,34 @@ curl -X POST http://localhost:3000/api/connection \
   "success": true,
   "data": {
     "connectionId": "uuid-v4-aqui",
+    "pairingMethod": "qr",
     "qrCode": "data:image/png;base64,..."
+    "message": "Scan the QR code with your WhatsApp to connect"
+  },
+  "message": "Connection created successfully"
+}
+```
+
+### 1.1. Criar Nova Conexão WhatsApp (Código de Emparelhamento)
+```bash
+curl -X POST http://localhost:3000/api/connection \
+  -H "Content-Type: application/json" \
+  -d '{
+    "pairingMethod": "code",
+    "phoneNumber": "5511999999999"
+  }'
+```
+
+**Resposta esperada:**
+```json
+{
+  "success": true,
+  "data": {
+    "connectionId": "uuid-v4-aqui",
+    "pairingMethod": "code",
+    "pairingCode": "ABCD-1234",
+    "phoneNumber": "5511999999999",
+    "message": "Enter the pairing code ABCD-1234 in your WhatsApp"
   },
   "message": "Connection created successfully"
 }
