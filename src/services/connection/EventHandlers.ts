@@ -279,22 +279,18 @@ export class EventHandlers {
         }
       }
       
-      // Gerar código de emparelhamento quando socket estiver conectando
-      if (connection === 'connecting' && instance && instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
-        // Tentar gerar código via event handler como backup
-        setTimeout(async () => {
-          if (!instance.pairingCode) {
-            try {
-              const code = await sock.requestPairingCode(instance.phoneNumber!);
-              instance.pairingCode = code;
-              instance.status = 'code_pending';
-              logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
-            } catch (error) {
-              logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
-              instance.status = 'disconnected';
-            }
-          }
-        }, 1000);
+      // Gerar código de emparelhamento seguindo documentação oficial do Baileys
+      if ((connection === 'connecting' || !!qr) && instance && instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
+        try {
+          logger.info(`Gerando código de emparelhamento para ${connectionId} (connection: ${connection}, qr: ${!!qr})`);
+          const code = await sock.requestPairingCode(instance.phoneNumber);
+          instance.pairingCode = code;
+          instance.status = 'code_pending';
+          logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
+        } catch (error) {
+          logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
+          instance.status = 'disconnected';
+        }
       }
 
       if (connection === 'close') {

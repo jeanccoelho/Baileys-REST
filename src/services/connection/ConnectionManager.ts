@@ -106,22 +106,9 @@ export class ConnectionManager {
           attempts++;
         }
       } else if (pairingMethod === 'code') {
-        // Para código de emparelhamento, aguardar socket estar pronto e gerar
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        try {
-          const code = await sock.requestPairingCode(phoneNumber!);
-          instanceData.pairingCode = code;
-          instanceData.status = 'code_pending';
-          logger.info(`Código de emparelhamento gerado imediatamente para ${connectionId}: ${code}`);
-        } catch (error) {
-          logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
-          instanceData.status = 'disconnected';
-        }
-        
-        // Aguardar um pouco mais se necessário
+        // Para código de emparelhamento, aguardar evento connection.update
         let attempts = 0;
-        const maxAttempts = 5;
+        const maxAttempts = 20;
         
         while (attempts < maxAttempts) {
           await new Promise(resolve => setTimeout(resolve, 500));
