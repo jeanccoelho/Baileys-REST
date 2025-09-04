@@ -88,22 +88,33 @@ export class ConnectionManager {
       // Configurar event handlers
       this.eventHandlers.setupSocketEvents(sock, connectionId, saveCreds);
 
-      // Aguardar geração do QR code ou código de emparelhamento
-      let attempts = 0;
-      const maxAttempts = 10; // Reduzir tentativas para ser mais rápido
-      
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Verificar mais frequentemente
-        
-        if (pairingMethod === 'qr' && instanceData.qr) {
-          break;
+      // Para método de código, gerar imediatamente
+      if (pairingMethod === 'code' && phoneNumber) {
+        try {
+          // Aguardar um pouco para o socket estar pronto
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          const code = await sock.requestPairingCode(phoneNumber);
+          instanceData.pairingCode = code;
+          instanceData.status = 'code_pending';
+          logger.info(`Código de emparelhamento gerado imediatamente para ${connectionId}: ${code}`);
+        } catch (error) {
+          logger.warn(`Erro ao gerar código imediatamente para ${connectionId}, será gerado via event handler:`, error);
         }
+      } else if (pairingMethod === 'qr') {
+        // Para QR code, aguardar geração via event handler
+        let attempts = 0;
+        const maxAttempts = 10;
         
-        if (pairingMethod === 'code' && instanceData.pairingCode) {
-          break;
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          if (instanceData.qr) {
+            break;
+          }
+          
+          attempts++;
         }
-        
-        attempts++;
       }
 
       // Log do resultado

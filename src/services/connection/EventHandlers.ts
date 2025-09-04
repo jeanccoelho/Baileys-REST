@@ -279,25 +279,20 @@ export class EventHandlers {
         }
       }
       
-      if ((connection === 'connecting' || qr) && instance) {
-        if (instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
+      // Gerar código de emparelhamento assim que a conexão estiver estabelecida
+      if (connection === 'connecting' && instance && instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
+        // Aguardar um pouco para o socket estar pronto
+        setTimeout(async () => {
           try {
-            // Verificar se o socket está pronto antes de solicitar código
-            if ((sock.ws as any)?.readyState !== 1) {
-              logger.warn(`Socket não está pronto para ${connectionId}, aguardando...`);
-              return;
-            }
-            
-            const code = await sock.requestPairingCode(instance.phoneNumber);
+            const code = await sock.requestPairingCode(instance.phoneNumber!);
             instance.pairingCode = code;
             instance.status = 'code_pending';
             logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
           } catch (error) {
             logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
-            // Não alterar para QR automaticamente, manter o método escolhido
             instance.status = 'disconnected';
           }
-        }
+        }, 1000);
       }
 
       if (connection === 'close') {

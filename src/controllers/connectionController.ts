@@ -56,24 +56,6 @@ export const createConnection = async (
     
     const result = await whatsappService.createConnection(pairingMethod, phoneNumber);
     
-    if (pairingMethod === 'qr' && !result.qrCode) {
-      // Aguardar um pouco mais e tentar novamente
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const connection = whatsappService.getConnection(result.connectionId);
-      
-      res.status(201).json({
-        success: true,
-        data: {
-          connectionId: result.connectionId,
-          pairingMethod,
-          qrCode: connection?.qr || null,
-          message: connection?.qr ? 'Escaneie o QR code com seu WhatsApp para conectar' : 'QR code sendo gerado, verifique o status em alguns segundos'
-        },
-        message: 'Connection created successfully'
-      });
-      return;
-    }
-    
     const responseData: any = {
       connectionId: result.connectionId,
       pairingMethod
@@ -81,7 +63,9 @@ export const createConnection = async (
     
     if (pairingMethod === 'qr') {
       responseData.qrCode = result.qrCode;
-      responseData.message = 'Escaneie o QR code com seu WhatsApp para conectar';
+      responseData.message = result.qrCode 
+        ? 'Escaneie o QR code com seu WhatsApp para conectar'
+        : 'QR code sendo gerado, verifique o status em alguns segundos';
     } else {
       responseData.pairingCode = result.pairingCode;
       responseData.message = result.pairingCode 
