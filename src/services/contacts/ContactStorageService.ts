@@ -1,46 +1,19 @@
-import fs from 'fs';
-import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
+import { createClient } from '@supabase/supabase-js';
 import logger from '../../utils/logger';
-import { Contact, CreateContactRequest, UpdateContactRequest } from '../../types/contacts';
+import { Contact, CreateContactRequest, UpdateContactRequest, ImportResult } from '../../types/contacts';
 
 export class ContactStorageService {
-  private readonly CONTACTS_FILE = path.join(process.cwd(), 'data', 'contacts.json');
+  private supabase;
 
   constructor() {
-    this.ensureDataDirectory();
-  }
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-  private ensureDataDirectory(): void {
-    const dataDir = path.dirname(this.CONTACTS_FILE);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-      logger.info(`Diretório de dados criado: ${dataDir}`);
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase URL e ANON_KEY são obrigatórios no arquivo .env');
     }
 
-    if (!fs.existsSync(this.CONTACTS_FILE)) {
-      fs.writeFileSync(this.CONTACTS_FILE, JSON.stringify([], null, 2));
-      logger.info('Arquivo de contatos criado');
-    }
-  }
-
-  private loadContacts(): Contact[] {
-    try {
-      const data = fs.readFileSync(this.CONTACTS_FILE, 'utf8');
-      return JSON.parse(data);
-    } catch (error) {
-      logger.error('Erro ao carregar contatos:', error);
-      return [];
-    }
-  }
-
-  private saveContacts(contacts: Contact[]): void {
-    try {
-      fs.writeFileSync(this.CONTACTS_FILE, JSON.stringify(contacts, null, 2));
-    } catch (error) {
-      logger.error('Erro ao salvar contatos:', error);
-      throw new Error('Erro interno do servidor');
-    }
+    this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   private validatePhoneNumber(phoneNumber: string): string {
@@ -55,88 +28,126 @@ export class ContactStorageService {
   }
 
   async createContact(userId: string, data: CreateContactRequest): Promise<Contact> {
-    const phoneNumber = this.validatePhoneNumber(data.phoneNumber);
-    const contacts = this.loadContacts();
+    const phoneNumber = this.validatePhoneNumber(data.phone_number);
 
     // Verificar se número já existe para este usuário
-    const existingContact = contacts.find(
-      c => c.userId === userId && c.phoneNumber === phoneNumber
-    );
+    const { data: existingContact } = await this.supabase
+      .from('contacts')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('phone_number', phoneNumber)
+      .single();
 
     if (existingContact) {
       throw new Error('Número já existe na sua lista de contatos');
     }
 
-    const newContact: Contact = {
-      id: uuidv4(),
-      userId,
-      phoneNumber,
-      name: data.name?.trim() || undefined,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+    const { data: contact, error } = await this.supabase
+      .from('contacts')
+      .insert({
+        user_id: userId,
+        phone_number: phoneNumber,
+        name: data.name?.trim() || null
+      })
+      .select()
+      .single();
 
-    contacts.push(newContact);
-    this.saveContacts(contacts);
+    if (error) {
+      logger.error('Erro ao criar contato:', error);
+      throw new Error('Erro ao criar contato');
+    }
 
     logger.info(`Contato criado: ${phoneNumber} para usuário ${userId}`);
-    return newContact;
+    return contact;
   }
 
   async getContacts(userId: string): Promise<Contact[]> {
-    const contacts = this.loadContacts();
-    return contacts.filter(c => c.userId === userId);
+    const { data: contacts, error } = await this.supabase
+      .from('contacts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      logger.error('Erro ao buscar contatos:', error);
+      throw new Error('Erro ao buscar contatos');
+    }
+
+    return contacts || [];
   }
 
   async getContactById(userId: string, contactId: string): Promise<Contact | null> {
-    const contacts = this.loadContacts();
-    const contact = contacts.find(c => c.id === contactId && c.userId === userId);
-    return contact || null;
+    const { data: contact, error } = await this.supabase
+      .from('contacts')
+      .select('*')
+      .eq('id', contactId)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Não encontrado
+      }
+      logger.error('Erro ao buscar contato:', error);
+      throw new Error('Erro ao buscar contato');
+    }
+
+    return contact;
   }
 
   async updateContact(userId: string, contactId: string, data: UpdateContactRequest): Promise<Contact> {
-    const contacts = this.loadContacts();
-    const contactIndex = contacts.findIndex(c => c.id === contactId && c.userId === userId);
+    const { data: contact, error } = await this.supabase
+      .from('contacts')
+      .update({
+        name: data.name?.trim() || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', contactId)
+      .eq('user_id', userId)
+      .select()
+      .single();
 
-    if (contactIndex === -1) {
+    if (error) {
+      logger.error('Erro ao atualizar contato:', error);
+      throw new Error('Erro ao atualizar contato');
+    }
+
+    if (!contact) {
       throw new Error('Contato não encontrado');
     }
 
-    contacts[contactIndex] = {
-      ...contacts[contactIndex],
-      name: data.name?.trim() || contacts[contactIndex].name,
-      updatedAt: new Date()
-    };
-
-    this.saveContacts(contacts);
     logger.info(`Contato atualizado: ${contactId} para usuário ${userId}`);
-    
-    return contacts[contactIndex];
+    return contact;
   }
 
   async deleteContact(userId: string, contactId: string): Promise<void> {
-    const contacts = this.loadContacts();
-    const contactIndex = contacts.findIndex(c => c.id === contactId && c.userId === userId);
+    const { error } = await this.supabase
+      .from('contacts')
+      .delete()
+      .eq('id', contactId)
+      .eq('user_id', userId);
 
-    if (contactIndex === -1) {
-      throw new Error('Contato não encontrado');
+    if (error) {
+      logger.error('Erro ao remover contato:', error);
+      throw new Error('Erro ao remover contato');
     }
 
-    const deletedContact = contacts[contactIndex];
-    contacts.splice(contactIndex, 1);
-    this.saveContacts(contacts);
-
-    logger.info(`Contato removido: ${deletedContact.phoneNumber} para usuário ${userId}`);
+    logger.info(`Contato removido: ${contactId} para usuário ${userId}`);
   }
 
-  async importContacts(userId: string, phoneNumbers: string[]): Promise<{ imported: number; skipped: number; errors: string[] }> {
-    const contacts = this.loadContacts();
-    const userContacts = contacts.filter(c => c.userId === userId);
-    const existingNumbers = new Set(userContacts.map(c => c.phoneNumber));
+  async importContacts(userId: string, phoneNumbers: string[]): Promise<ImportResult> {
+    // Buscar contatos existentes do usuário
+    const { data: existingContacts } = await this.supabase
+      .from('contacts')
+      .select('phone_number')
+      .eq('user_id', userId);
+
+    const existingNumbers = new Set(existingContacts?.map(c => c.phone_number) || []);
     
     let imported = 0;
     let skipped = 0;
     const errors: string[] = [];
+    const contactsToInsert: any[] = [];
 
     for (const phoneNumber of phoneNumbers) {
       try {
@@ -147,25 +158,31 @@ export class ContactStorageService {
           continue;
         }
 
-        const newContact: Contact = {
-          id: uuidv4(),
-          userId,
-          phoneNumber: cleanNumber,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
+        contactsToInsert.push({
+          user_id: userId,
+          phone_number: cleanNumber
+        });
 
-        contacts.push(newContact);
         existingNumbers.add(cleanNumber);
-        imported++;
 
       } catch (error) {
         errors.push(`${phoneNumber}: ${(error as Error).message}`);
       }
     }
 
-    if (imported > 0) {
-      this.saveContacts(contacts);
+    // Inserir contatos em lote
+    if (contactsToInsert.length > 0) {
+      const { data: insertedContacts, error } = await this.supabase
+        .from('contacts')
+        .insert(contactsToInsert)
+        .select();
+
+      if (error) {
+        logger.error('Erro ao importar contatos:', error);
+        throw new Error('Erro ao importar contatos');
+      }
+
+      imported = insertedContacts?.length || 0;
     }
 
     logger.info(`Importação concluída para usuário ${userId}: ${imported} importados, ${skipped} ignorados, ${errors.length} erros`);
@@ -174,13 +191,102 @@ export class ContactStorageService {
   }
 
   async deleteAllContacts(userId: string): Promise<number> {
-    const contacts = this.loadContacts();
-    const userContacts = contacts.filter(c => c.userId === userId);
-    const otherContacts = contacts.filter(c => c.userId !== userId);
+    // Contar contatos antes de remover
+    const { count } = await this.supabase
+      .from('contacts')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    // Remover todos os contatos do usuário
+    const { error } = await this.supabase
+      .from('contacts')
+      .delete()
+      .eq('user_id', userId);
+
+    if (error) {
+      logger.error('Erro ao remover todos os contatos:', error);
+      throw new Error('Erro ao remover contatos');
+    }
+
+    const deletedCount = count || 0;
+    logger.info(`${deletedCount} contatos removidos para usuário ${userId}`);
+    return deletedCount;
+  }
+
+  async updateWhatsAppData(
+    userId: string, 
+    contactId: string, 
+    whatsappData: {
+      exists: boolean;
+      jid?: string;
+      status?: string;
+      picture?: string;
+      business?: boolean;
+      verifiedName?: string;
+    }
+  ): Promise<Contact> {
+    const { data: contact, error } = await this.supabase
+      .from('contacts')
+      .update({
+        whatsapp_exists: whatsappData.exists,
+        whatsapp_jid: whatsappData.jid || null,
+        whatsapp_status: whatsappData.status || null,
+        whatsapp_picture: whatsappData.picture || null,
+        whatsapp_business: whatsappData.business || false,
+        whatsapp_verified_name: whatsappData.verifiedName || null,
+        last_whatsapp_check: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', contactId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Erro ao atualizar dados do WhatsApp:', error);
+      throw new Error('Erro ao atualizar dados do WhatsApp');
+    }
+
+    if (!contact) {
+      throw new Error('Contato não encontrado');
+    }
+
+    logger.info(`Dados do WhatsApp atualizados para contato ${contactId}`);
+    return contact;
+  }
+
+  async validateContactWhatsApp(userId: string, contactId: string): Promise<Contact> {
+    const contact = await this.getContactById(userId, contactId);
     
-    this.saveContacts(otherContacts);
-    
-    logger.info(`${userContacts.length} contatos removidos para usuário ${userId}`);
-    return userContacts.length;
+    if (!contact) {
+      throw new Error('Contato não encontrado');
+    }
+
+    // Aqui você integraria com o serviço de validação do WhatsApp
+    // Por enquanto, vamos simular uma validação
+    const mockValidation = {
+      exists: Math.random() > 0.3, // 70% chance de existir
+      jid: `${contact.phone_number}@s.whatsapp.net`,
+      status: 'Disponível',
+      business: false
+    };
+
+    return this.updateWhatsAppData(userId, contactId, mockValidation);
+  }
+
+  async getContactsWithWhatsAppData(userId: string): Promise<Contact[]> {
+    const { data: contacts, error } = await this.supabase
+      .from('contacts')
+      .select('*')
+      .eq('user_id', userId)
+      .not('whatsapp_exists', 'is', null)
+      .order('last_whatsapp_check', { ascending: false });
+
+    if (error) {
+      logger.error('Erro ao buscar contatos com dados do WhatsApp:', error);
+      throw new Error('Erro ao buscar contatos');
+    }
+
+    return contacts || [];
   }
 }

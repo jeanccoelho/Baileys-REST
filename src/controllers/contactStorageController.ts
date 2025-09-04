@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ContactStorageService } from '../services/contacts/ContactStorageService';
-import { ContactResponse, CreateContactRequest, UpdateContactRequest } from '../types/contacts';
+import { ContactResponse, CreateContactRequest, UpdateContactRequest, ValidateContactRequest } from '../types/contacts';
+import whatsappService from '../services/whatsappService';
 import logger from '../utils/logger';
 
 export class ContactStorageController {
@@ -300,6 +301,109 @@ export class ContactStorageController {
         success: false,
         error: (error as Error).message,
         message: 'Falha ao remover contatos'
+      });
+    }
+  };
+
+  validateContactWhatsApp = async (
+    req: Request<{}, ContactResponse, ValidateContactRequest>,
+    res: Response<ContactResponse>
+  ): Promise<void> => {
+    try {
+      const { contact_id, connection_id } = req.body;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: 'Usuário não autenticado',
+          message: 'Token de acesso inválido'
+        });
+        return;
+      }
+
+      if (!contact_id || !connection_id) {
+        res.status(400).json({
+          success: false,
+          error: 'ID do contato e ID da conexão são obrigatórios',
+          message: 'Forneça contact_id e connection_id'
+        });
+        return;
+      }
+
+      // Buscar contato
+      const contact = await this.contactService.getContactById(userId, contact_id);
+      if (!contact) {
+        res.status(404).json({
+          success: false,
+          error: 'Contato não encontrado',
+          message: 'O contato especificado não existe'
+        });
+        return;
+      }
+
+      // Validar número no WhatsApp
+      const whatsappData = await whatsappService.validateNumber(userId, connection_id, contact.phone_number);
+      
+      // Atualizar dados do WhatsApp no contato
+      const updatedContact = await this.contactService.updateWhatsAppData(userId, contact_id, {
+        exists: whatsappData.exists,
+        jid: whatsappData.jid,
+        status: whatsappData.status,
+        picture: whatsappData.picture,
+        business: whatsappData.business,
+        verifiedName: whatsappData.name
+      });
+
+      res.json({
+        success: true,
+        data: {
+          contact: updatedContact,
+          whatsapp: whatsappData
+        },
+        message: 'Contato validado no WhatsApp com sucesso'
+      });
+
+    } catch (error) {
+      logger.error('Erro ao validar contato no WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        error: (error as Error).message,
+        message: 'Falha ao validar contato no WhatsApp'
+      });
+    }
+  };
+
+  getContactsWithWhatsApp = async (
+    req: Request,
+    res: Response<ContactResponse>
+  ): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          error: 'Usuário não autenticado',
+          message: 'Token de acesso inválido'
+        });
+        return;
+      }
+
+      const contacts = await this.contactService.getContactsWithWhatsAppData(userId);
+
+      res.json({
+        success: true,
+        data: contacts,
+        message: 'Contatos com dados do WhatsApp recuperados com sucesso'
+      });
+
+    } catch (error) {
+      logger.error('Erro ao obter contatos com dados do WhatsApp:', error);
+      res.status(500).json({
+        success: false,
+        error: (error as Error).message,
+        message: 'Falha ao recuperar contatos'
       });
     }
   };

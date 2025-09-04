@@ -29,9 +29,13 @@ router.use(authenticate);
 // CRUD de contatos
 router.post('/', asyncHandler(contactController.createContact));
 router.get('/', asyncHandler(contactController.getContacts));
+router.get('/whatsapp', asyncHandler(contactController.getContactsWithWhatsApp));
 router.get('/:contactId', asyncHandler(contactController.getContactById));
 router.put('/:contactId', asyncHandler(contactController.updateContact));
 router.delete('/:contactId', asyncHandler(contactController.deleteContact));
+
+// Validação WhatsApp
+router.post('/validate-whatsapp', asyncHandler(contactController.validateContactWhatsApp));
 
 // Importação e limpeza
 router.post('/import', upload.single('file'), asyncHandler(contactController.importContacts));

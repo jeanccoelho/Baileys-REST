@@ -1,19 +1,31 @@
 export interface Contact {
   id: string;
-  userId: string;
-  phoneNumber: string;
+  user_id: string;
+  phone_number: string;
   name?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  whatsapp_exists?: boolean;
+  whatsapp_jid?: string;
+  whatsapp_status?: string;
+  whatsapp_picture?: string;
+  whatsapp_business?: boolean;
+  whatsapp_verified_name?: string;
+  last_whatsapp_check?: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface CreateContactRequest {
-  phoneNumber: string;
+  phone_number: string;
   name?: string;
 }
 
 export interface UpdateContactRequest {
   name?: string;
+}
+
+export interface ValidateContactRequest {
+  contact_id: string;
+  connection_id: string;
 }
 
 export interface ImportContactsRequest {
@@ -22,7 +34,14 @@ export interface ImportContactsRequest {
 
 export interface ContactResponse {
   success: boolean;
-  data?: Contact | Contact[];
+  data?: Contact | Contact[] | any;
   message?: string;
   error?: string;
+}
+
+export interface ImportResult {
+  imported: number;
+  skipped: number;
+  errors: string[];
+  contacts?: Contact[];
 }

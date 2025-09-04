@@ -129,6 +129,8 @@ Authorization: Bearer <token>
 
 ## 📞 Gerenciamento de Contatos Armazenados
 
+**⚠️ IMPORTANTE: Sistema usa Supabase para armazenamento persistente dos contatos**
+
 ### 20. Criar Contato
 ```http
 POST /api/contacts-storage
@@ -138,7 +140,7 @@ Authorization: Bearer <token>
 **Body:**
 ```json
 {
-  "phoneNumber": "5511999999999",
+  "phone_number": "5511999999999",
   "name": "João Silva"
 }
 ```
@@ -149,11 +151,17 @@ Authorization: Bearer <token>
   "success": true,
   "data": {
     "id": "uuid-v4",
-    "userId": "user-uuid",
-    "phoneNumber": "5511999999999",
+    "user_id": "user-uuid",
+    "phone_number": "5511999999999",
     "name": "João Silva",
-    "createdAt": "2024-01-01T10:00:00.000Z",
-    "updatedAt": "2024-01-01T10:00:00.000Z"
+    "whatsapp_exists": null,
+    "whatsapp_jid": null,
+    "whatsapp_status": null,
+    "whatsapp_picture": null,
+    "whatsapp_business": false,
+    "last_whatsapp_check": null,
+    "created_at": "2024-01-01T10:00:00.000Z",
+    "updated_at": "2024-01-01T10:00:00.000Z"
   },
   "message": "Contato criado com sucesso"
 }
@@ -172,11 +180,17 @@ Authorization: Bearer <token>
   "data": [
     {
       "id": "uuid-v4",
-      "userId": "user-uuid",
-      "phoneNumber": "5511999999999",
+      "user_id": "user-uuid",
+      "phone_number": "5511999999999",
       "name": "João Silva",
-      "createdAt": "2024-01-01T10:00:00.000Z",
-      "updatedAt": "2024-01-01T10:00:00.000Z"
+      "whatsapp_exists": true,
+      "whatsapp_jid": "5511999999999@s.whatsapp.net",
+      "whatsapp_status": "Disponível",
+      "whatsapp_picture": "https://pps.whatsapp.net/...",
+      "whatsapp_business": false,
+      "last_whatsapp_check": "2024-01-01T11:00:00.000Z",
+      "created_at": "2024-01-01T10:00:00.000Z",
+      "updated_at": "2024-01-01T11:00:00.000Z"
     }
   ],
   "message": "Contatos recuperados com sucesso"
@@ -469,6 +483,77 @@ Authorization: Bearer <token>
 }
 ```
 
+### 27. Validar Contato no WhatsApp
+```http
+POST /api/contacts-storage/validate-whatsapp
+Authorization: Bearer <token>
+```
+
+**Body:**
+```json
+{
+  "contact_id": "uuid-v4",
+  "connection_id": "whatsapp-connection-uuid"
+}
+```
+
+**Resposta (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "contact": {
+      "id": "uuid-v4",
+      "user_id": "user-uuid",
+      "phone_number": "5511999999999",
+      "name": "João Silva",
+      "whatsapp_exists": true,
+      "whatsapp_jid": "5511999999999@s.whatsapp.net",
+      "whatsapp_status": "Disponível",
+      "whatsapp_picture": "https://pps.whatsapp.net/...",
+      "whatsapp_business": false,
+      "last_whatsapp_check": "2024-01-01T11:00:00.000Z"
+    },
+    "whatsapp": {
+      "exists": true,
+      "jid": "5511999999999@s.whatsapp.net",
+      "status": "Disponível",
+      "picture": "https://pps.whatsapp.net/...",
+      "business": false
+    }
+  },
+  "message": "Contato validado no WhatsApp com sucesso"
+}
+```
+
+### 28. Listar Contatos com Dados do WhatsApp
+```http
+GET /api/contacts-storage/whatsapp
+Authorization: Bearer <token>
+```
+
+**Resposta (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid-v4",
+      "user_id": "user-uuid",
+      "phone_number": "5511999999999",
+      "name": "João Silva",
+      "whatsapp_exists": true,
+      "whatsapp_jid": "5511999999999@s.whatsapp.net",
+      "whatsapp_status": "Disponível",
+      "whatsapp_picture": "https://pps.whatsapp.net/...",
+      "whatsapp_business": false,
+      "last_whatsapp_check": "2024-01-01T11:00:00.000Z"
+    }
+  ],
+  "message": "Contatos com dados do WhatsApp recuperados com sucesso"
+}
+```
+
 ---
 
 ## 👥 Dados Sincronizados do WhatsApp
@@ -622,14 +707,32 @@ Authorization: Bearer <token>
 ### 1. Gerenciar Contatos Armazenados
 ```javascript
 // Criar contato
-const createContact = async (phoneNumber, name) => {
+const createContact = async (phone_number, name) => {
   const response = await fetch('/api/contacts-storage', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ phoneNumber, name })
+    body: JSON.stringify({ phone_number, name })
+  });
+  
+  const result = await response.json();
+  return result;
+};
+
+// Validar contato no WhatsApp
+const validateContactWhatsApp = async (contactId, connectionId) => {
+  const response = await fetch('/api/contacts-storage/validate-whatsapp', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ 
+      contact_id: contactId, 
+      connection_id: connectionId 
+    })
   });
   
   const result = await response.json();
@@ -649,8 +752,10 @@ const loadContacts = async () => {
   contactList.innerHTML = contacts.map(contact => `
     <div class="contact-item" data-id="${contact.id}">
       <div class="contact-name">${contact.name || 'Sem nome'}</div>
-      <div class="contact-phone">${contact.phoneNumber}</div>
+      <div class="contact-phone">${contact.phone_number}</div>
+      <div class="contact-whatsapp">${contact.whatsapp_exists ? '✅ WhatsApp' : '❌ Sem WhatsApp'}</div>
       <button onclick="deleteContact('${contact.id}')">Remover</button>
+      <button onclick="validateWhatsApp('${contact.id}')">Validar WhatsApp</button>
     </div>
   `).join('');
 };
@@ -672,6 +777,25 @@ const importContacts = async (file) => {
     alert(`Importação concluída: ${result.data.imported} importados, ${result.data.skipped} ignorados`);
     loadContacts(); // Recarregar lista
   }
+};
+
+// Validar todos os contatos no WhatsApp
+const validateAllContacts = async (connectionId) => {
+  const contacts = await loadContacts();
+  
+  for (const contact of contacts.data) {
+    try {
+      await validateContactWhatsApp(contact.id, connectionId);
+      console.log(`Contato ${contact.phone_number} validado`);
+      
+      // Aguardar 1 segundo entre validações para não sobrecarregar
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error(`Erro ao validar ${contact.phone_number}:`, error);
+    }
+  }
+  
+  loadContacts(); // Recarregar lista com dados atualizados
 };
 ```
 
@@ -809,6 +933,7 @@ const sendFile = async (to, file, caption = '') => {
 2. **ConnectionManager** - Gerenciar conexões WhatsApp
 3. **QRCodeDisplay** - Exibir QR Code para conexão
 4. **ContactManager** - Gerenciar contatos armazenados
+5. **ContactValidator** - Validar contatos no WhatsApp
 5. **ContactImport** - Importar contatos via TXT
 6. **ChatList** - Lista de conversas
 7. **ChatWindow** - Janela de conversa
@@ -816,11 +941,14 @@ const sendFile = async (to, file, caption = '') => {
 9. **FileUpload** - Upload de arquivos
 10. **ContactList** - Lista de contatos do WhatsApp
 11. **StatusIndicator** - Status da conexão
+12. **WhatsAppBadge** - Badge indicando se contato tem WhatsApp
 
 ### Funcionalidades Recomendadas:
 - ✅ Auto-refresh do status da conexão
 - ✅ Notificações em tempo real
 - ✅ Gerenciamento completo de contatos
+- ✅ Validação de contatos no WhatsApp
+- ✅ Armazenamento persistente com Supabase
 - ✅ Importação de contatos via arquivo TXT
 - ✅ Validação de números de telefone
 - ✅ Upload de arquivos por drag & drop
@@ -831,6 +959,7 @@ const sendFile = async (to, file, caption = '') => {
 - ✅ Indicadores de mensagem enviada/lida
 - ✅ Emoji picker
 - ✅ Histórico de mensagens paginado
+- ✅ Status de WhatsApp dos contatos
 
 ### Tecnologias Sugeridas:
 - **React/Vue/Angular** - Framework principal
