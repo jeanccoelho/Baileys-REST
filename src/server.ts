@@ -1,0 +1,50 @@
+import app from './app';
+import logger from './utils/logger';
+import fs from 'fs';
+
+const PORT = process.env.PORT || 3000;
+
+// Criar diretórios necessários
+const directories = ['./auth_sessions', './uploads', './logs'];
+directories.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received: closing HTTP server');
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT signal received: closing HTTP server');
+  process.exit(0);
+});
+
+// Tratamento de erros não capturados
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
+
+app.listen(PORT, () => {
+  logger.info(`WhatsApp API server running on port ${PORT}`);
+  logger.info(`Health check available at http://localhost:${PORT}/health`);
+  logger.info('Available endpoints:');
+  logger.info('POST /api/send-message - Send text messages');
+  logger.info('POST /api/send-file - Send files with optional caption');
+  logger.info('GET /api/contacts/:connectionId - List all contacts');
+  logger.info('GET /api/groups/:connectionId - List all groups');
+  logger.info('POST /api/validate-number - Validate WhatsApp number');
+  logger.info('POST /api/connection - Create new connection');
+  logger.info('PUT /api/connection - Validate connection with code');
+  logger.info('DELETE /api/connection/:connectionId - Remove connection');
+  logger.info('GET /api/connection - List all connections');
+});
