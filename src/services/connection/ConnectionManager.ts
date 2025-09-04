@@ -24,6 +24,8 @@ export class ConnectionManager {
   constructor() {
     this.ensureDirectories();
     this.eventHandlers = new EventHandlers(this.instances, this.AUTH_DIR);
+    // Passar referência do ConnectionManager para o EventHandlers
+    (this.eventHandlers as any).connectionManager = this;
   }
 
   private ensureDirectories(): void {
@@ -37,9 +39,9 @@ export class ConnectionManager {
     }
   }
 
-  async createConnection(userId: string, pairingMethod: 'qr' | 'code' = 'qr', phoneNumber?: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+  async createConnection(pairingMethod: 'qr' | 'code' = 'qr', phoneNumber?: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
     const connectionId = uuidv4();
-    const authPath = path.join(this.AUTH_DIR, userId, connectionId);
+    const authPath = path.join(this.AUTH_DIR, connectionId);
     
     if (!fs.existsSync(authPath)) {
       fs.mkdirSync(authPath, { recursive: true });
@@ -74,7 +76,6 @@ export class ConnectionManager {
 
       const instanceData: InstanceData = {
         instanceId: connectionId,
-        userId,
         socket: sock,
         status: 'connecting',
         reconnectionAttempts: 0,
@@ -143,10 +144,10 @@ export class ConnectionManager {
     }
   }
 
-  async validateConnection(userId: string, connectionId: string, code: string): Promise<boolean> {
+  async validateConnection(connectionId: string, code: string): Promise<boolean> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.userId !== userId) {
+    if (!instance) {
       throw new Error('Conexão não encontrada');
     }
 
@@ -159,12 +160,8 @@ export class ConnectionManager {
     }
   }
 
-  async removeConnection(userId: string, connectionId: string): Promise<void> {
+  async removeConnection(connectionId: string): Promise<void> {
     const instance = this.instances.get(connectionId);
-    
-    if (!instance || instance.userId !== userId) {
-      throw new Error('Conexão não encontrada ou não autorizada');
-    }
     
     if (instance) {
       instance.shouldBeConnected = false;
@@ -221,31 +218,43 @@ export class ConnectionManager {
 
     // Recriar com os mesmos parâmetros
     try {
-      await this.createConnection(instance.userId, pairingMethod, phoneNumber);
+      await this.createConnection(pairingMethod, phoneNumber);
       logger.info(`Instância ${connectionId} recriada com sucesso`);
     } catch (error) {
       logger.error(`Erro ao recriar instância ${connectionId}:`, error);
     }
   }
 
-  async restartConnection(userId: string, connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+  async restartConnection(connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.userId !== userId) {
-      throw new Error('Conexão não encontrada ou não autorizada');
-    }
-
     logger.info(`Reiniciando conexão ${connectionId}...`);
     
-    // Salvar dados da instância
-    const pairingMethod = instance.pairingMethod;
-    const phoneNumber = instance.phoneNumber;
+    // Salvar dados da instância (se existir)
+    const pairingMethod = instance?.pairingMethod || 'qr';
+    const phoneNumber = instance?.phoneNumber;
     
-    // Remover instância atual
-    await this.removeConnection(userId, connectionId);
+    // Limpar instância atual sem remover arquivos de auth
+    if (instance) {
+      instance.shouldBeConnected = false;
+      
+      if (instance.reconnectTimeout) {
+        clearTimeout(instance.reconnectTimeout);
+      }
+      
+      try {
+        if (instance.socket && typeof instance.socket.end === 'function') {
+          instance.socket.end(undefined);
+        }
+      } catch (error) {
+        logger.warn(`Erro ao encerrar socket ${connectionId}:`, error);
+      }
+      
+      this.instances.delete(connectionId);
+    }
     
     // Criar nova conexão com mesmo ID
-    const authPath = path.join(this.AUTH_DIR, userId, connectionId);
+    const authPath = path.join(this.AUTH_DIR, connectionId);
     
     if (!fs.existsSync(authPath)) {
       fs.mkdirSync(authPath, { recursive: true });
@@ -269,7 +278,6 @@ export class ConnectionManager {
 
       const instanceData: InstanceData = {
         instanceId: connectionId,
-        userId,
         socket: sock,
         status: 'connecting',
         reconnectionAttempts: 0,
@@ -315,7 +323,6 @@ export class ConnectionManager {
       return result;
     } catch (error) {
       logger.error(`Erro ao reiniciar conexão ${connectionId}:`, error);
-      await this.cleanup(connectionId);
       throw error;
     }
   }
@@ -341,7 +348,7 @@ export class ConnectionManager {
     
     this.instances.delete(connectionId);
     
-    const authPath = path.join(this.AUTH_DIR, instance?.userId || 'unknown', connectionId);
+    const authPath = path.join(this.AUTH_DIR, connectionId);
     if (fs.existsSync(authPath)) {
       try {
         fs.rmSync(authPath, { recursive: true, force: true });
@@ -352,14 +359,9 @@ export class ConnectionManager {
     }
   }
 
-  getAllConnections(userId?: string): WhatsAppConnection[] {
-    const instances = userId 
-      ? Array.from(this.instances.values()).filter(instance => instance.userId === userId)
-      : Array.from(this.instances.values());
-      
-    return instances.map(instance => ({
+  getAllConnections(): WhatsAppConnection[] {
+    return Array.from(this.instances.values()).map(instance => ({
       id: instance.instanceId,
-      userId: instance.userId,
       status: instance.status,
       phoneNumber: instance.number,
       createdAt: instance.createdAt,
@@ -369,13 +371,12 @@ export class ConnectionManager {
     }));
   }
 
-  getConnection(userId: string, connectionId: string): WhatsAppConnection | undefined {
+  getConnection(connectionId: string): WhatsAppConnection | undefined {
     const instance = this.instances.get(connectionId);
-    if (!instance || instance.userId !== userId) return undefined;
+    if (!instance) return undefined;
 
     return {
       id: instance.instanceId,
-      userId: instance.userId,
       status: instance.status,
       phoneNumber: instance.number,
       createdAt: instance.createdAt,
@@ -385,10 +386,8 @@ export class ConnectionManager {
     };
   }
 
-  getInstance(userId: string, connectionId: string): InstanceData | undefined {
-    const instance = this.instances.get(connectionId);
-    if (!instance || instance.userId !== userId) return undefined;
-    return instance;
+  getInstance(connectionId: string): InstanceData | undefined {
+    return this.instances.get(connectionId);
   }
 
   async restoreInstances(): Promise<void> {
@@ -426,22 +425,16 @@ export class ConnectionManager {
       }
 
       // Recarregar lista após limpeza
-      const userDirs = fs.readdirSync(this.AUTH_DIR)
+      const validInstanceDirs = fs.readdirSync(this.AUTH_DIR)
         .filter(file => fs.statSync(path.join(this.AUTH_DIR, file)).isDirectory());
 
-      for (const userId of userDirs) {
-        const userPath = path.join(this.AUTH_DIR, userId);
-        const instanceDirs = fs.readdirSync(userPath)
-          .filter(file => fs.statSync(path.join(userPath, file)).isDirectory());
-          
-        for (const instanceId of instanceDirs) {
-          try {
-            await this.restoreInstance(userId, instanceId);
-          } catch (error) {
-            logger.error(`Erro ao restaurar instância ${instanceId} do usuário ${userId}:`, error);
-            // Remover instância com erro
-            await this.cleanup(instanceId);
-          }
+      for (const instanceId of instanceDirs) {
+        try {
+          await this.restoreInstance(instanceId);
+        } catch (error) {
+          logger.error(`Erro ao restaurar instância ${instanceId}:`, error);
+          // Remover instância com erro
+          await this.cleanup(instanceId);
         }
       }
     } catch (error) {
@@ -449,11 +442,11 @@ export class ConnectionManager {
     }
   }
 
-  private async restoreInstance(userId: string, instanceId: string): Promise<void> {
-    const authPath = path.join(this.AUTH_DIR, userId, instanceId);
+  private async restoreInstance(instanceId: string): Promise<void> {
+    const authPath = path.join(this.AUTH_DIR, instanceId);
     
     if (!fs.existsSync(authPath)) {
-      logger.warn(`Pasta de autenticação não encontrada para ${instanceId} do usuário ${userId}`);
+      logger.warn(`Pasta de autenticação não encontrada para ${instanceId}`);
       return;
     }
 
@@ -475,7 +468,6 @@ export class ConnectionManager {
 
       const instanceData: InstanceData = {
         instanceId,
-        userId,
         socket: sock,
         status: 'connecting',
         reconnectionAttempts: 0,
@@ -487,9 +479,9 @@ export class ConnectionManager {
       this.instances.set(instanceId, instanceData);
       this.eventHandlers.setupSocketEvents(sock, instanceId, saveCreds);
 
-      logger.info(`Instância ${instanceId} do usuário ${userId} restaurada com sucesso`);
+      logger.info(`Instância ${instanceId} restaurada com sucesso`);
     } catch (error) {
-      logger.error(`Erro ao restaurar instância ${instanceId} do usuário ${userId}:`, error);
+      logger.error(`Erro ao restaurar instância ${instanceId}:`, error);
     }
   }
 }
