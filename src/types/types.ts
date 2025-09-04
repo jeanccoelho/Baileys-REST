@@ -1,10 +1,11 @@
 export interface WhatsAppConnection {
   id: string;
   qr?: string;
-  status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending';
+  status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending' | 'code_pending';
   phoneNumber?: string;
   createdAt: Date;
   lastActivity?: Date;
+  pairingCode?: string;
 }
 
 export interface SendMessageRequest {
@@ -26,6 +27,7 @@ export interface ValidateNumberRequest {
 
 export interface ConnectionRequest {
   pairingMethod?: 'qr' | 'code';
+  phoneNumber?: string;
 }
 
 export interface ValidateConnectionRequest {

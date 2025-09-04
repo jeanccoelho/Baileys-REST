@@ -26,6 +26,7 @@ interface InstanceData {
   socket: WASocket;
   status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending' | 'code_pending';
   qr?: string;
+  pairingCode?: string;
   profilePicture?: string;
   number?: string;
   reconnectionAttempts: number;
@@ -33,6 +34,8 @@ interface InstanceData {
   shouldBeConnected: boolean;
   createdAt: Date;
   lastActivity?: Date;
+  pairingMethod: 'qr' | 'code';
+  phoneNumber?: string;
 }
 
 class WhatsAppService {
@@ -62,9 +65,16 @@ class WhatsAppService {
       fs.mkdirSync(authPath, { recursive: true });
     }
 
-    // Baileys não suporta mais código de emparelhamento via Mobile API
     if (pairingMethod === 'code') {
-      throw new Error('Pairing code method is no longer supported by WhatsApp. Please use QR code method instead.');
+      if (!phoneNumber) {
+        throw new Error('Phone number is required for pairing code method');
+      }
+      
+      // Validar formato E.164 sem o sinal de +
+      const cleanNumber = phoneNumber.replace(/\D/g, '');
+      if (cleanNumber.length < 10 || cleanNumber.length > 15) {
+        throw new Error('Phone number must be in E.164 format without + sign (e.g., 5511999999999)');
+      }
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
@@ -88,7 +98,9 @@ class WhatsAppService {
       status: 'connecting',
       reconnectionAttempts: 0,
       shouldBeConnected: true,
-      createdAt: new Date()
+      createdAt: new Date(),
+      pairingMethod,
+      phoneNumber
     };
 
     this.instances.set(connectionId, instanceData);
@@ -105,16 +117,25 @@ class WhatsAppService {
       const instance = this.instances.get(connectionId);
 
       try {
-      try {
-        if (qr && instance) {
+        if ((connection === 'connecting' || qr) && instance) {
+          if (instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
+            try {
+              const code = await sock.requestPairingCode(instance.phoneNumber);
+              instance.pairingCode = code;
+              instance.status = 'code_pending';
+              logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
+            } catch (error) {
+              logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
+            }
+          }
+        }
+        
+        if (qr && instance && instance.pairingMethod === 'qr') {
           qrCode = await QRCode.toDataURL(qr);
           instance.qr = qrCode;
           instance.status = 'qr_pending';
           logger.info(`QR Code gerado para conexão ${connectionId}`);
         }
-      } catch (error) {
-        logger.error(`Erro ao gerar QR Code para ${connectionId}:`, error);
-      }
 
       if (connection === 'close') {
         const reason = (lastDisconnect?.error as Boom)?.output?.statusCode;
@@ -188,10 +209,17 @@ class WhatsAppService {
     // Aguardar geração do QR code
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    return { 
-      connectionId, 
-      qrCode: instanceData.qr
+    const result: { connectionId: string; qrCode?: string; pairingCode?: string } = {
+      connectionId
     };
+    
+    if (pairingMethod === 'qr') {
+      result.qrCode = instanceData.qr;
+    } else {
+      result.pairingCode = instanceData.pairingCode;
+    }
+    
+    return result;
   }
 
   private async reconnectInstance(connectionId: string): Promise<void> {
@@ -303,7 +331,8 @@ class WhatsAppService {
       phoneNumber: instance.number,
       createdAt: instance.createdAt,
       lastActivity: instance.lastActivity,
-      qr: instance.qr
+      qr: instance.qr,
+      pairingCode: instance.pairingCode
     }));
   }
 
@@ -317,7 +346,8 @@ class WhatsAppService {
       phoneNumber: instance.number,
       createdAt: instance.createdAt,
       lastActivity: instance.lastActivity,
-      qr: instance.qr
+      qr: instance.qr,
+      pairingCode: instance.pairingCode
     };
   }
 

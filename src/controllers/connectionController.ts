@@ -8,29 +8,30 @@ export const createConnection = async (
   res: Response<ApiResponse>
 ): Promise<void> => {
   try {
-    const { pairingMethod = 'qr' } = req.body;
+    const { pairingMethod = 'qr', phoneNumber } = req.body;
     
-    // Apenas QR Code é suportado
     if (pairingMethod === 'code') {
-      res.status(400).json({
-        success: false,
-        error: 'Pairing code method is no longer supported',
-        message: 'Please use QR code method instead. WhatsApp has discontinued support for pairing codes.'
-      });
-      return;
+      if (!phoneNumber) {
+        res.status(400).json({
+          success: false,
+          error: 'Phone number is required for pairing code method',
+          message: 'Please provide phoneNumber in E.164 format without + sign'
+        });
+        return;
+      }
     }
     
-    const { connectionId, qrCode } = await whatsappService.createConnection(pairingMethod);
+    const result = await whatsappService.createConnection(pairingMethod, phoneNumber);
     
-    if (pairingMethod === 'qr' && !qrCode) {
+    if (pairingMethod === 'qr' && !result.qrCode) {
       // Aguardar um pouco mais e tentar novamente
       await new Promise(resolve => setTimeout(resolve, 2000));
-      const connection = whatsappService.getConnection(connectionId);
+      const connection = whatsappService.getConnection(result.connectionId);
       
       res.status(201).json({
         success: true,
         data: {
-          connectionId,
+          connectionId: result.connectionId,
           pairingMethod,
           qrCode: connection?.qr || null,
           message: connection?.qr ? 'Scan the QR code with your WhatsApp to connect' : 'QR code is being generated, please check status'
@@ -41,12 +42,17 @@ export const createConnection = async (
     }
     
     const responseData: any = {
-      connectionId,
+      connectionId: result.connectionId,
       pairingMethod
     };
     
-    responseData.qrCode = qrCode;
-    responseData.message = 'Scan the QR code with your WhatsApp to connect';
+    if (pairingMethod === 'qr') {
+      responseData.qrCode = result.qrCode;
+      responseData.message = 'Scan the QR code with your WhatsApp to connect';
+    } else {
+      responseData.pairingCode = result.pairingCode;
+      responseData.message = 'Enter the pairing code in your WhatsApp: Settings > Linked Devices > Link a Device > Link with phone number instead';
+    }
     
     res.status(201).json({
       success: true,
