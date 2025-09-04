@@ -56,7 +56,7 @@ export class UserService {
       email: user.email
     };
 
-    return jwt.sign(payload, this.JWT_SECRET, {
+    return jwt.sign(payload as any, this.JWT_SECRET, {
       expiresIn: this.JWT_EXPIRES_IN
     });
   }
