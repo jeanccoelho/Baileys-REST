@@ -24,7 +24,7 @@ export const getContacts = async (
     res.json({
       success: true,
       data: contacts,
-      message: `${contacts.length} contacts retrieved successfully`
+      message: 'Contacts retrieved successfully'
     });
   } catch (error) {
     logger.error('Error retrieving contacts:', error);
