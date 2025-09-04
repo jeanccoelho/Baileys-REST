@@ -38,39 +38,7 @@ const upload = multer({
 router.post('/send-message', asyncHandler(sendMessage));
 
 // Rota de envio de arquivo
-router.post('/send-file', (req: any, res: any, next: any) => {
-  upload.single('file')(req, res, (error: any) => {
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        error: error.message,
-        message: 'Erro no upload do arquivo'
-      });
-    }
-    next();
-  });
-}, (req: any, res: any, next: any) => {
-  upload.single('file')(req, res, (error: any) => {
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        error: error.message,
-        message: 'File upload failed'
-      });
-    }
-    next();
-  });
-}, (req: any, res: any, next: any) => {
-  // Verificar se houve erro no upload
-  if (!req.file) {
-    return res.status(400).json({
-      success: false,
-      error: 'Nenhum arquivo fornecido',
-      message: 'Falha no upload - nenhum arquivo recebido'
-    });
-  }
-  next();
-}, asyncHandler(sendFile));
+router.post('/send-file', upload.single('file'), asyncHandler(sendFile));
 
 router.post('/validate-number', asyncHandler(validateNumber));
 

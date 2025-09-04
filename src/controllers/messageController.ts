@@ -47,11 +47,22 @@ export const sendFile = async (
     const { connectionId, to, caption } = req.body;
     const file = req.file;
     
+    // Log para debug
+    logger.info('Dados recebidos no sendFile:', {
+      connectionId,
+      to,
+      caption,
+      hasFile: !!file,
+      fileName: file?.originalname,
+      fileSize: file?.size,
+      mimeType: file?.mimetype
+    });
+    
     if (!connectionId || !to || !file) {
       res.status(400).json({
         success: false,
-        error: 'Connection ID, recipient number, and file are required',
-        message: 'Missing required parameters'
+        error: `Missing required parameters. connectionId: ${!!connectionId}, to: ${!!to}, file: ${!!file}`,
+        message: 'Connection ID, recipient number, and file are required'
       });
       return;
     }
