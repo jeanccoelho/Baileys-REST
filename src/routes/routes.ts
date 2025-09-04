@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { Request, Response, NextFunction } from 'express';
 import {
   sendMessage,
   sendFile,
@@ -16,11 +17,6 @@ import {
   getAllConnections
 } from '../controllers/connectionController';
 import { asyncHandler } from '../middleware/errorHandler';
-
-// Tipos explícitos para evitar conflitos
-type ExpressRequest = Express.Request;
-type ExpressResponse = Express.Response;
-type ExpressNextFunction = Express.NextFunction;
 
 const router = Router();
 
@@ -39,8 +35,19 @@ const upload = multer({
 // Rotas de mensagens
 router.post('/send-message', asyncHandler(sendMessage));
 
-// Rota de envio de arquivo com tratamento específico
-router.post('/send-file', (req, res, next) => {
+// Rota de envio de arquivo
+router.post('/send-file', (req: Request, res: Response, next: NextFunction) => {
+  upload.single('file')(req, res, (error) => {
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error: error.message,
+        message: 'Erro no upload do arquivo'
+      });
+    }
+    next();
+  });
+}, (req: Request, res: Response, next: NextFunction) => {
   upload.single('file')(req, res, (err) => {
     if (err) {
       return res.status(400).json({
@@ -53,27 +60,15 @@ router.post('/send-file', (req, res, next) => {
   });
 }, (req, res, next) => {
   // Verificar se houve erro no upload
-  if (req.file === undefined && req.body.file === undefined) {
+  if (!req.file) {
     return res.status(400).json({
       success: false,
-      error: 'No file provided',
-      message: 'File upload failed - no file received'
+      error: 'Nenhum arquivo fornecido',
+      message: 'Falha no upload - nenhum arquivo recebido'
     });
   }
   next();
 }, asyncHandler(sendFile));
-
-// Middleware de tratamento de erros do multer
-router.use((error: Error, req: ExpressRequest, res: ExpressResponse, next: ExpressNextFunction) => {
-  if (error instanceof multer.MulterError) {
-    return res.status(400).json({
-      success: false,
-      error: error.message,
-      message: 'File upload failed'
-    });
-  }
-  next(error);
-});
 
 router.post('/validate-number', asyncHandler(validateNumber));
 

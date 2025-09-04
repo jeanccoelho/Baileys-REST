@@ -1,5 +1,6 @@
 import app from './app';
 import logger from './utils/logger';
+import whatsappService from './services/whatsappService';
 import fs from 'fs';
 
 const PORT = process.env.PORT || 3000;
@@ -34,9 +35,18 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   logger.info(`WhatsApp API server running on port ${PORT}`);
   logger.info(`Health check available at http://localhost:${PORT}/health`);
+  
+  // Restaurar instâncias existentes
+  try {
+    await whatsappService.restoreInstances();
+    logger.info('Instâncias restauradas com sucesso');
+  } catch (error) {
+    logger.error('Erro ao restaurar instâncias:', error);
+  }
+  
   logger.info('Available endpoints:');
   logger.info('POST /api/send-message - Send text messages');
   logger.info('POST /api/send-file - Send files with optional caption');
