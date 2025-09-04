@@ -392,7 +392,23 @@ export class EventHandlers {
         instance.reconnectTimeout = setTimeout(async () => {
           if (instance.shouldBeConnected && instance.reconnectionAttempts < 5) {
             instance.reconnectionAttempts++;
-            logger.info(`Iniciando tentativa de reconexão ${instance.reconnectionAttempts} para ${connectionId}`);
+            
+            // Para códigos que precisam de restart, usar recreateInstance
+            if (reason === DisconnectReason.restartRequired || reason === 515) {
+              logger.info(`Iniciando recreação da instância ${connectionId} (tentativa ${instance.reconnectionAttempts})`);
+              // Precisamos acessar o ConnectionManager - vamos usar uma referência
+              try {
+                // Como não temos acesso direto ao ConnectionManager aqui,
+                // vamos emitir um evento customizado ou usar uma callback
+                if ((this as any).connectionManager) {
+                  await (this as any).connectionManager.recreateInstance(connectionId);
+                }
+              } catch (error) {
+                logger.error(`Erro na recreação da instância ${connectionId}:`, error);
+              }
+            } else {
+              logger.info(`Iniciando tentativa de reconexão ${instance.reconnectionAttempts} para ${connectionId}`);
+            }
           } else {
             logger.warn(`Máximo de tentativas de reconexão atingido para ${connectionId}, removendo instância`);
             instance.shouldBeConnected = false;

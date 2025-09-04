@@ -24,6 +24,8 @@ export class ConnectionManager {
   constructor() {
     this.ensureDirectories();
     this.eventHandlers = new EventHandlers(this.instances, this.AUTH_DIR);
+    // Passar referência do ConnectionManager para o EventHandlers
+    (this.eventHandlers as any).connectionManager = this;
   }
 
   private ensureDirectories(): void {
