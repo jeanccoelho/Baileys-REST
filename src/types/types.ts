@@ -4,6 +4,7 @@ export interface WhatsAppConnection {
   qr?: string;
   status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending' | 'code_pending';
   phoneNumber?: string;
+  profilePicture?: string;
   createdAt: Date;
   lastActivity?: Date;
   pairingCode?: string;

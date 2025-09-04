@@ -398,7 +398,34 @@ export class EventHandlers {
       const number = sock.user.id.split(':')[0];
       
       try {
-        const profilePicture = await sock.profilePictureUrl(sock.user.id, 'image').catch(() => '');
+        // Tentar obter foto de perfil com diferentes abordagens
+        let profilePicture = '';
+        
+        try {
+          // Primeira tentativa: foto de perfil do próprio usuário
+          profilePicture = await sock.profilePictureUrl(sock.user.id, 'image');
+          logger.info(`Foto de perfil obtida para ${connectionId}: ${profilePicture.substring(0, 50)}...`);
+        } catch (error) {
+          logger.debug(`Primeira tentativa de foto falhou para ${connectionId}:`, error);
+          
+          try {
+            // Segunda tentativa: usando apenas o número
+            const numberJid = `${number}@s.whatsapp.net`;
+            profilePicture = await sock.profilePictureUrl(numberJid, 'image');
+            logger.info(`Foto de perfil obtida (segunda tentativa) para ${connectionId}: ${profilePicture.substring(0, 50)}...`);
+          } catch (error2) {
+            logger.debug(`Segunda tentativa de foto falhou para ${connectionId}:`, error2);
+            
+            try {
+              // Terceira tentativa: foto de perfil em baixa resolução
+              profilePicture = await sock.profilePictureUrl(sock.user.id, 'preview');
+              logger.info(`Foto de perfil (preview) obtida para ${connectionId}: ${profilePicture.substring(0, 50)}...`);
+            } catch (error3) {
+              logger.warn(`Não foi possível obter foto de perfil para ${connectionId}:`, error3);
+              profilePicture = '';
+            }
+          }
+        }
         
         instance.status = 'connected';
         instance.profilePicture = profilePicture;
@@ -411,7 +438,7 @@ export class EventHandlers {
           instance.reconnectTimeout = undefined;
         }
         
-        logger.info(`Instância ${connectionId} conectada com número: ${number}`);
+        logger.info(`Instância ${connectionId} conectada com número: ${number}${profilePicture ? ' (com foto de perfil)' : ' (sem foto de perfil)'}`);
       } catch (error) {
         logger.error(`Erro ao obter dados do perfil para ${connectionId}:`, error);
         
