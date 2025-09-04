@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { Request, Response, NextFunction } from 'express';
 import {
   sendMessage,
   sendFile,
@@ -35,7 +36,7 @@ const upload = multer({
 router.post('/send-message', asyncHandler(sendMessage));
 
 // Rota de envio de arquivo
-router.post('/send-file', (req, res, next) => {
+router.post('/send-file', (req: any, res: any, next: any) => {
   upload.single('file')(req, res, (error: any) => {
     if (error) {
       return res.status(400).json({
@@ -46,7 +47,7 @@ router.post('/send-file', (req, res, next) => {
     }
     next();
   });
-}, (req, res, next) => {
+}, (req: any, res: any, next: any) => {
   upload.single('file')(req, res, (error: any) => {
     if (error) {
       return res.status(400).json({
@@ -57,7 +58,7 @@ router.post('/send-file', (req, res, next) => {
     }
     next();
   });
-}, (req, res, next) => {
+}, (req: any, res: any, next: any) => {
   // Verificar se houve erro no upload
   if (!req.file) {
     return res.status(400).json({
