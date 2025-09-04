@@ -24,9 +24,15 @@ export class EventHandlers {
       // History Sync Events
       sock.ev.on('messaging-history.set', async ({ chats, contacts, messages, syncType }) => {
         try {
+          const instance = this.instances.get(connectionId);
+          
           logger.info(`History sync para ${connectionId}: ${chats?.length || 0} chats, ${contacts?.length || 0} contatos, ${messages?.length || 0} mensagens (tipo: ${syncType})`);
           
-          const instance = this.instances.get(connectionId);
+          // Log detalhado dos contatos recebidos
+          if (contacts && contacts.length > 0) {
+            logger.info(`Contatos sincronizados: ${contacts.slice(0, 3).map(c => c.id || 'sem-id').join(', ')}${contacts.length > 3 ? '...' : ''}`);
+          }
+          
           if (instance) {
             instance.lastActivity = new Date();
           }
