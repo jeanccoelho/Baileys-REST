@@ -24,6 +24,8 @@ export class ConnectionManager {
   constructor() {
     this.ensureDirectories();
     this.eventHandlers = new EventHandlers(this.instances, this.AUTH_DIR);
+    // Passar referência do ConnectionManager para o EventHandlers
+    (this.eventHandlers as any).connectionManager = this;
   }
 
   private ensureDirectories(): void {
@@ -226,18 +228,30 @@ export class ConnectionManager {
   async restartConnection(connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance) {
-      throw new Error('Conexão não encontrada');
-    }
-
     logger.info(`Reiniciando conexão ${connectionId}...`);
     
-    // Salvar dados da instância
-    const pairingMethod = instance.pairingMethod;
-    const phoneNumber = instance.phoneNumber;
+    // Salvar dados da instância (se existir)
+    const pairingMethod = instance?.pairingMethod || 'qr';
+    const phoneNumber = instance?.phoneNumber;
     
-    // Remover instância atual
-    await this.removeConnection(connectionId);
+    // Limpar instância atual sem remover arquivos de auth
+    if (instance) {
+      instance.shouldBeConnected = false;
+      
+      if (instance.reconnectTimeout) {
+        clearTimeout(instance.reconnectTimeout);
+      }
+      
+      try {
+        if (instance.socket && typeof instance.socket.end === 'function') {
+          instance.socket.end(undefined);
+        }
+      } catch (error) {
+        logger.warn(`Erro ao encerrar socket ${connectionId}:`, error);
+      }
+      
+      this.instances.delete(connectionId);
+    }
     
     // Criar nova conexão com mesmo ID
     const authPath = path.join(this.AUTH_DIR, connectionId);
@@ -309,7 +323,6 @@ export class ConnectionManager {
       return result;
     } catch (error) {
       logger.error(`Erro ao reiniciar conexão ${connectionId}:`, error);
-      await this.cleanup(connectionId);
       throw error;
     }
   }
