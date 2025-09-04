@@ -279,7 +279,7 @@ export class EventHandlers {
         }
       }
       
-      // Gerar código de emparelhamento assim que a conexão estiver estabelecida
+      // Gerar código de emparelhamento quando socket estiver conectando
       if (connection === 'connecting' && instance && instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
         // Aguardar um pouco para o socket estar pronto
         setTimeout(async () => {
@@ -292,7 +292,7 @@ export class EventHandlers {
             logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
             instance.status = 'disconnected';
           }
-        }, 1000);
+        }, 2000);
       }
 
       if (connection === 'close') {
