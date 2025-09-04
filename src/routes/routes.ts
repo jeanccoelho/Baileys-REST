@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import multer, { MulterError } from 'multer';
+import multer from 'multer';
 import {
   sendMessage,
   sendFile,
@@ -33,18 +33,32 @@ const upload = multer({
 
 // Rotas de mensagens
 router.post('/send-message', asyncHandler(sendMessage));
-router.post('/send-file', (req, res, next) => {
-  upload.single('file')(req, res, (err) => {
+router.post('/send-file', upload.single('file'), (req, res, next) => {
+  // Verificar se houve erro no upload
+  if (req.file === undefined && req.body.file === undefined) {
+    return res.status(400).json({
+      success: false,
+      error: 'No file provided',
+      message: 'File upload failed - no file received'
+    });
+  }
+  next();
+}, asyncHandler(sendFile));
+
+// Middleware de tratamento de erros do multer
+router.use((error: any, req: any, res: any, next: any) => {
+  if (error instanceof multer.MulterError) {
     if (err) {
       return res.status(400).json({
         success: false,
-        error: err.message,
+        error: error.message,
         message: 'File upload failed'
       });
     }
-    next();
-  });
-}, asyncHandler(sendFile));
+  }
+  next(error);
+});
+
 router.post('/validate-number', asyncHandler(validateNumber));
 
 // Rotas de contatos

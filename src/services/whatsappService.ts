@@ -6,9 +6,9 @@ import makeWASocket, {
   getAggregateVotesInPollMessage,
   downloadMediaMessage,
   fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore
+  makeCacheableSignalKeyStore,
+  makeInMemoryStore
 } from '@whiskeysockets/baileys';
-import { makeInMemoryStore } from '@whiskeysockets/baileys/lib/Store';
 import { Boom } from '@hapi/boom';
 import { v4 as uuidv4 } from 'uuid';
 import QRCode from 'qrcode';
@@ -315,6 +315,11 @@ class WhatsAppService {
     try {
       const jid = number.includes('@') ? number : `${number}@s.whatsapp.net`;
       const results = await sock.onWhatsApp(jid);
+      
+      if (!results || results.length === 0) {
+        return { exists: false };
+      }
+      
       const result = results[0];
       
       if (!result?.exists) {
