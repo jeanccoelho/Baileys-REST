@@ -131,10 +131,14 @@ class WhatsAppService {
         }
         
         if (qr && instance && instance.pairingMethod === 'qr') {
-          qrCode = await QRCode.toDataURL(qr);
-          instance.qr = qrCode;
+          try {
+            qrCode = await QRCode.toDataURL(qr);
+            instance.qr = qrCode;
+            logger.info(`QR Code atualizado para conexão ${connectionId}`);
+          } catch (error) {
+            logger.error(`Erro ao gerar QR Code para ${connectionId}:`, error);
+          }
           instance.status = 'qr_pending';
-          logger.info(`QR Code gerado para conexão ${connectionId}`);
         }
 
       if (connection === 'close') {
@@ -206,8 +210,23 @@ class WhatsAppService {
       }
     });
 
-    // Aguardar geração do QR code
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Aguardar geração do QR code ou código de emparelhamento
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (pairingMethod === 'qr' && instanceData.qr) {
+        break;
+      }
+      
+      if (pairingMethod === 'code' && instanceData.pairingCode) {
+        break;
+      }
+      
+      attempts++;
+    }
 
     const result: { connectionId: string; qrCode?: string; pairingCode?: string } = {
       connectionId
