@@ -24,6 +24,8 @@ export class ConnectionManager {
   constructor() {
     this.ensureDirectories();
     this.eventHandlers = new EventHandlers(this.instances, this.AUTH_DIR);
+    // Passar referência do ConnectionManager para o EventHandlers
+    (this.eventHandlers as any).connectionManager = this;
   }
 
   private ensureDirectories(): void {
@@ -88,20 +90,8 @@ export class ConnectionManager {
       // Configurar event handlers
       this.eventHandlers.setupSocketEvents(sock, connectionId, saveCreds);
 
-      // Para método de código, gerar imediatamente
-      if (pairingMethod === 'code' && phoneNumber) {
-        try {
-          // Aguardar um pouco para o socket estar pronto
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          const code = await sock.requestPairingCode(phoneNumber);
-          instanceData.pairingCode = code;
-          instanceData.status = 'code_pending';
-          logger.info(`Código de emparelhamento gerado imediatamente para ${connectionId}: ${code}`);
-        } catch (error) {
-          logger.warn(`Erro ao gerar código imediatamente para ${connectionId}, será gerado via event handler:`, error);
-        }
-      } else if (pairingMethod === 'qr') {
+      // Aguardar geração do QR code ou código de emparelhamento via event handlers
+      if (pairingMethod === 'qr') {
         // Para QR code, aguardar geração via event handler
         let attempts = 0;
         const maxAttempts = 10;
@@ -110,6 +100,33 @@ export class ConnectionManager {
           await new Promise(resolve => setTimeout(resolve, 500));
           
           if (instanceData.qr) {
+            break;
+          }
+          
+          attempts++;
+        }
+      } else if (pairingMethod === 'code') {
+        // Para código de emparelhamento, aguardar socket estar pronto e gerar
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        try {
+          const code = await sock.requestPairingCode(phoneNumber!);
+          instanceData.pairingCode = code;
+          instanceData.status = 'code_pending';
+          logger.info(`Código de emparelhamento gerado imediatamente para ${connectionId}: ${code}`);
+        } catch (error) {
+          logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
+          instanceData.status = 'disconnected';
+        }
+        
+        // Aguardar um pouco mais se necessário
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          if (instanceData.pairingCode) {
             break;
           }
           
@@ -226,18 +243,30 @@ export class ConnectionManager {
   async restartConnection(connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance) {
-      throw new Error('Conexão não encontrada');
-    }
-
     logger.info(`Reiniciando conexão ${connectionId}...`);
     
-    // Salvar dados da instância
-    const pairingMethod = instance.pairingMethod;
-    const phoneNumber = instance.phoneNumber;
+    // Salvar dados da instância (se existir)
+    const pairingMethod = instance?.pairingMethod || 'qr';
+    const phoneNumber = instance?.phoneNumber;
     
-    // Remover instância atual
-    await this.removeConnection(connectionId);
+    // Limpar instância atual sem remover arquivos de auth
+    if (instance) {
+      instance.shouldBeConnected = false;
+      
+      if (instance.reconnectTimeout) {
+        clearTimeout(instance.reconnectTimeout);
+      }
+      
+      try {
+        if (instance.socket && typeof instance.socket.end === 'function') {
+          instance.socket.end(undefined);
+        }
+      } catch (error) {
+        logger.warn(`Erro ao encerrar socket ${connectionId}:`, error);
+      }
+      
+      this.instances.delete(connectionId);
+    }
     
     // Criar nova conexão com mesmo ID
     const authPath = path.join(this.AUTH_DIR, connectionId);
@@ -309,7 +338,6 @@ export class ConnectionManager {
       return result;
     } catch (error) {
       logger.error(`Erro ao reiniciar conexão ${connectionId}:`, error);
-      await this.cleanup(connectionId);
       throw error;
     }
   }
