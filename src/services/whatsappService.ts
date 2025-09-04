@@ -15,6 +15,15 @@ class WhatsAppService {
     const instances = (this.connectionManager as any).instances;
     this.messageService = new MessageService(instances);
     this.contactService = new ContactService(instances);
+    
+    // Limpeza periódica de instâncias desconectadas
+    setInterval(async () => {
+      try {
+        await this.connectionManager.cleanupDisconnectedInstances();
+      } catch (error) {
+        // Ignorar erros de limpeza
+      }
+    }, 60000); // A cada 1 minuto
   }
 
   // Métodos de conexão

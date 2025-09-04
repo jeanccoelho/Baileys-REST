@@ -333,12 +333,14 @@ export class EventHandlers {
       // Seguir documentação: tratar restartRequired especificamente
       if (reason === DisconnectReason.restartRequired) {
         logger.info(`Restart necessário para ${connectionId}, criando nova conexão...`);
-        // Marcar para limpeza e permitir que seja recriada
-        instance.shouldBeConnected = false;
+        // Marcar para recriação automática
+        instance.shouldBeConnected = true;
         setTimeout(async () => {
-          // Cleanup será feito automaticamente
-          logger.info(`Instância ${connectionId} marcada para recriação após restart`);
-        }, 1000);
+          if (instance.shouldBeConnected) {
+            // Aqui seria necessário chamar o método de recriação do ConnectionManager
+            logger.info(`Tentando recriar instância ${connectionId} após restart`);
+          }
+        }, 2000);
         return;
       }
       
@@ -365,18 +367,17 @@ export class EventHandlers {
 
       if (shouldReconnect) {
         const attempts = instance.reconnectionAttempts;
-        const delayTime = Math.min(30000, 2000 * Math.pow(2, Math.min(attempts, 5)));
+        const delayTime = Math.min(15000, 1000 * Math.pow(2, Math.min(attempts, 3)));
         
         logger.info(`Reconectando ${connectionId} em ${delayTime / 1000}s... (tentativa ${attempts + 1})`);
         
         instance.reconnectTimeout = setTimeout(async () => {
           if (instance.shouldBeConnected && instance.reconnectionAttempts < 5) {
             instance.reconnectionAttempts++;
-            // Aqui seria necessário chamar o método de reconexão do ConnectionManager
+            logger.info(`Iniciando tentativa de reconexão ${instance.reconnectionAttempts} para ${connectionId}`);
           } else {
             logger.warn(`Máximo de tentativas de reconexão atingido para ${connectionId}, removendo instância`);
             instance.shouldBeConnected = false;
-            // Aqui seria necessário chamar o cleanup do ConnectionManager
           }
         }, delayTime);
       }

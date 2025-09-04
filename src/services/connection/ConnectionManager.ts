@@ -158,7 +158,7 @@ export class ConnectionManager {
       }
       
       try {
-        if (instance.status === 'connected') {
+        if (instance.status === 'connected' && instance.socket && typeof instance.socket.logout === 'function') {
           await instance.socket.logout();
         }
       } catch (error) {
@@ -178,6 +178,34 @@ export class ConnectionManager {
     
     await this.cleanup(connectionId);
     logger.info(`Conexão ${connectionId} removida com sucesso`);
+  }
+
+  async cleanupDisconnectedInstances(): Promise<void> {
+    const disconnectedInstances = Array.from(this.instances.entries())
+      .filter(([_, instance]) => instance.status === 'disconnected' && !instance.shouldBeConnected);
+    
+    for (const [connectionId, _] of disconnectedInstances) {
+      logger.info(`Removendo instância desconectada: ${connectionId}`);
+      await this.cleanup(connectionId);
+    }
+  }
+
+  async recreateInstance(connectionId: string): Promise<void> {
+    const instance = this.instances.get(connectionId);
+    if (!instance) return;
+
+    logger.info(`Recriando instância ${connectionId}...`);
+    
+    // Cleanup da instância atual
+    await this.cleanup(connectionId);
+    
+    // Recriar com os mesmos parâmetros
+    try {
+      await this.createConnection(instance.pairingMethod, instance.phoneNumber);
+      logger.info(`Instância ${connectionId} recriada com sucesso`);
+    } catch (error) {
+      logger.error(`Erro ao recriar instância ${connectionId}:`, error);
+    }
   }
 
   async cleanup(connectionId: string): Promise<void> {

@@ -141,6 +141,12 @@ export const getAllConnections = async (
   res: Response<ApiResponse>
 ): Promise<void> => {
   try {
+    // Limpar instâncias desconectadas antes de retornar a lista
+    const connectionManager = (whatsappService as any).connectionManager;
+    if (connectionManager && typeof connectionManager.cleanupDisconnectedInstances === 'function') {
+      await connectionManager.cleanupDisconnectedInstances();
+    }
+    
     const connections = whatsappService.getAllConnections();
     
     res.json({
