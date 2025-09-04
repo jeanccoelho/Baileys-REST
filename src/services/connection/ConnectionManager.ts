@@ -4,8 +4,7 @@ import makeWASocket, {
   WASocket,
   fetchLatestBaileysVersion,
   Browsers,
-  delay,
-  makeCacheableSignalKeyStore
+  delay
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import { v4 as uuidv4 } from 'uuid';
@@ -64,8 +63,9 @@ export class ConnectionManager {
       const sock = makeWASocket({
         printQRInTerminal: false,
         auth: {
+          ...state,
           creds: state.creds,
-          keys: state.keys
+          keys: makeCacheableSignalKeyStore(state.keys, logger as any)
         },
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
@@ -275,8 +275,9 @@ export class ConnectionManager {
       const sock = makeWASocket({
         printQRInTerminal: false,
         auth: {
+          ...state,
           creds: state.creds,
-          keys: state.keys
+          keys: makeCacheableSignalKeyStore(state.keys, logger as any)
         },
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
