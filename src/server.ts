@@ -27,12 +27,18 @@ process.on('SIGINT', () => {
 // Tratamento de erros não capturados
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
-  process.exit(1);
+  // Não sair do processo imediatamente em desenvolvimento
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  process.exit(1);
+  // Não sair do processo imediatamente em desenvolvimento
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
 });
 
 app.listen(PORT, async () => {

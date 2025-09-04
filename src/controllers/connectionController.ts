@@ -10,6 +10,23 @@ export const createConnection = async (
   try {
     const { connectionId, qrCode } = await whatsappService.createConnection();
     
+    if (!qrCode) {
+      // Aguardar um pouco mais e tentar novamente
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const connection = whatsappService.getConnection(connectionId);
+      
+      res.status(201).json({
+        success: true,
+        data: {
+          connectionId,
+          qrCode: connection?.qr || null,
+          message: connection?.qr ? 'Scan the QR code with your WhatsApp to connect' : 'QR code is being generated, please check status'
+        },
+        message: 'Connection created successfully'
+      });
+      return;
+    }
+    
     res.status(201).json({
       success: true,
       data: {

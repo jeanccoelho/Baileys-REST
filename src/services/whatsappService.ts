@@ -99,11 +99,15 @@ class WhatsAppService {
       const { connection, qr, lastDisconnect } = update;
       const instance = this.instances.get(connectionId);
 
-      if (qr && instance) {
-        qrCode = await QRCode.toDataURL(qr);
-        instance.qr = qrCode;
-        instance.status = 'qr_pending';
-        logger.info(`QR Code gerado para conexão ${connectionId}`);
+      try {
+        if (qr && instance) {
+          qrCode = await QRCode.toDataURL(qr);
+          instance.qr = qrCode;
+          instance.status = 'qr_pending';
+          logger.info(`QR Code gerado para conexão ${connectionId}`);
+        }
+      } catch (error) {
+        logger.error(`Erro ao gerar QR Code para ${connectionId}:`, error);
       }
 
       if (connection === 'close') {
@@ -167,10 +171,15 @@ class WhatsAppService {
           }
         }
       }
+    }).catch((error) => {
+      logger.error(`Erro no event handler connection.update para ${connectionId}:`, error);
+      if (instanceData) {
+        instanceData.status = 'disconnected';
+      }
     });
 
     // Aguardar geração do QR code
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     return { 
       connectionId, 
