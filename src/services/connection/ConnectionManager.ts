@@ -340,6 +340,90 @@ export class ConnectionManager {
     }
   }
 
+  async autoRestartInstance(userId: string, connectionId: string): Promise<void> {
+    logger.info(`Executando reinicialização automática para ${connectionId}...`);
+    
+    const instance = this.instances.get(connectionId);
+    if (!instance || instance.userId !== userId) {
+      logger.warn(`Instância ${connectionId} não encontrada para reinicialização automática`);
+      return;
+    }
+
+    // Salvar configurações da instância
+    const pairingMethod = instance.pairingMethod;
+    const phoneNumber = instance.phoneNumber;
+    const shouldBeConnected = true; // Manter conectado após restart automático
+
+    try {
+      // Limpar instância atual sem remover arquivos de auth
+      if (instance.reconnectTimeout) {
+        clearTimeout(instance.reconnectTimeout);
+      }
+      
+      try {
+        if (instance.socket && typeof instance.socket.end === 'function') {
+          instance.socket.end(undefined);
+        }
+      } catch (error) {
+        logger.debug(`Erro ao encerrar socket durante restart automático ${connectionId}:`, error);
+      }
+      
+      this.instances.delete(connectionId);
+
+      // Aguardar um pouco antes de recriar
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Recriar instância
+      const authPath = path.join(this.AUTH_DIR, userId, connectionId);
+      
+      if (!fs.existsSync(authPath)) {
+        fs.mkdirSync(authPath, { recursive: true });
+      }
+
+      const { state, saveCreds } = await useMultiFileAuthState(authPath);
+
+      const sock = makeWASocket({
+        auth: state,
+        logger: P({ level: 'silent' }),
+        browser: Browsers.ubuntu("Chrome"),
+        printQRInTerminal: false,
+        markOnlineOnConnect: false,
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: () => true,
+        getMessage: async (key) => {
+          return { conversation: '' };
+        }
+      });
+
+      const newInstanceData: InstanceData = {
+        instanceId: connectionId,
+        userId,
+        socket: sock,
+        status: 'connecting',
+        reconnectionAttempts: 0,
+        shouldBeConnected,
+        createdAt: new Date(),
+        pairingMethod,
+        phoneNumber
+      };
+
+      this.instances.set(connectionId, newInstanceData);
+      this.eventHandlers.setupSocketEvents(sock, connectionId, saveCreds);
+
+      logger.info(`Instância ${connectionId} recriada automaticamente com sucesso`);
+
+    } catch (error) {
+      logger.error(`Erro na reinicialização automática de ${connectionId}:`, error);
+      
+      // Em caso de erro, marcar como desconectada
+      const failedInstance = this.instances.get(connectionId);
+      if (failedInstance) {
+        failedInstance.shouldBeConnected = false;
+        failedInstance.status = 'disconnected';
+      }
+    }
+  }
+
   async cleanup(userId: string, connectionId: string): Promise<void> {
     const instance = this.instances.get(connectionId);
     

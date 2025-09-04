@@ -328,9 +328,26 @@ export class EventHandlers {
       // Seguir documentação: tratar restartRequired especificamente
       if (reason === DisconnectReason.restartRequired) {
         logger.info(`Restart necessário para ${connectionId}, criando nova conexão...`);
-        // Marcar para recriação automática mais rápida
-        instance.shouldBeConnected = false; // Evitar reconexões automáticas
-        logger.info(`Use POST /api/connection/${connectionId}/restart para reiniciar a instância`);
+        
+        // Reiniciar automaticamente após 2 segundos
+        setTimeout(async () => {
+          try {
+            logger.info(`Iniciando reinicialização automática para ${connectionId}...`);
+            
+            // Obter referência do ConnectionManager
+            const connectionManager = (this as any).connectionManager;
+            if (connectionManager && typeof connectionManager.autoRestartInstance === 'function') {
+              await connectionManager.autoRestartInstance(instance.userId, connectionId);
+              logger.info(`Instância ${connectionId} reiniciada automaticamente com sucesso`);
+            } else {
+              logger.error(`ConnectionManager não disponível para reinicialização automática de ${connectionId}`);
+            }
+          } catch (error) {
+            logger.error(`Erro na reinicialização automática de ${connectionId}:`, error);
+            instance.shouldBeConnected = false;
+          }
+        }, 2000);
+        
         return;
       }
       
