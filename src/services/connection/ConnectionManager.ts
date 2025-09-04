@@ -58,29 +58,17 @@ export class ConnectionManager {
 
     try {
       const { state, saveCreds } = await useMultiFileAuthState(authPath);
-      const { version } = await fetchLatestBaileysVersion();
 
       const sock = makeWASocket({
-        printQRInTerminal: false,
-        auth: {
-          ...state,
-          creds: state.creds,
-          keys: state.keys
-        },
+        auth: state,
+        logger: P({ level: 'silent' }),
         browser: Browsers.ubuntu("Chrome"),
-        syncFullHistory: false,
-        version,
-        logger: undefined,
-        shouldSyncHistoryMessage: () => false,
-        generateHighQualityLinkPreview: false,
+        printQRInTerminal: false,
         markOnlineOnConnect: false,
-        retryRequestDelayMs: 250,
-        maxMsgRetryCount: 3,
-        connectTimeoutMs: 60_000,
-        defaultQueryTimeoutMs: 60_000,
-        keepAliveIntervalMs: 10_000,
-        emitOwnEvents: false,
-        fireInitQueries: false
+        syncFullHistory: false,
+        getMessage: async (key) => {
+          return { conversation: '' };
+        }
       });
 
       const instanceData: InstanceData = {
@@ -99,28 +87,23 @@ export class ConnectionManager {
       // Configurar event handlers
       this.eventHandlers.setupSocketEvents(sock, connectionId, saveCreds);
 
-      // Aguardar conexão inicial conforme documentação
-      await new Promise((resolve) => {
-        const timeout = setTimeout(resolve, 10000); // 10s timeout
+      // Aguardar geração do QR code ou código de emparelhamento
+      let attempts = 0;
+      const maxAttempts = 15;
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const checkConnection = () => {
-          if (pairingMethod === 'qr' && instanceData.qr) {
-            clearTimeout(timeout);
-            resolve(undefined);
-          } else if (pairingMethod === 'code' && instanceData.pairingCode) {
-            clearTimeout(timeout);
-            resolve(undefined);
-          }
-        };
+        if (pairingMethod === 'qr' && instanceData.qr) {
+          break;
+        }
         
-        // Verificar a cada 500ms
-        const interval = setInterval(() => {
-          checkConnection();
-          if (instanceData.qr || instanceData.pairingCode) {
-            clearInterval(interval);
-          }
-        }, 500);
-      });
+        if (pairingMethod === 'code' && instanceData.pairingCode) {
+          break;
+        }
+        
+        attempts++;
+      }
 
       const result: { connectionId: string; qrCode?: string; pairingCode?: string } = {
         connectionId
@@ -275,29 +258,17 @@ export class ConnectionManager {
 
     try {
       const { state, saveCreds } = await useMultiFileAuthState(authPath);
-      const { version } = await fetchLatestBaileysVersion();
 
       const sock = makeWASocket({
-        printQRInTerminal: false,
-        auth: {
-          ...state,
-          creds: state.creds,
-          keys: state.keys
-        },
+        auth: state,
+        logger: P({ level: 'silent' }),
         browser: Browsers.ubuntu("Chrome"),
-        syncFullHistory: false,
-        version,
-        logger: undefined,
-        shouldSyncHistoryMessage: () => false,
-        generateHighQualityLinkPreview: false,
+        printQRInTerminal: false,
         markOnlineOnConnect: false,
-        retryRequestDelayMs: 250,
-        maxMsgRetryCount: 3,
-        connectTimeoutMs: 60_000,
-        defaultQueryTimeoutMs: 60_000,
-        keepAliveIntervalMs: 10_000,
-        emitOwnEvents: false,
-        fireInitQueries: false
+        syncFullHistory: false,
+        getMessage: async (key) => {
+          return { conversation: '' };
+        }
       });
 
       const instanceData: InstanceData = {

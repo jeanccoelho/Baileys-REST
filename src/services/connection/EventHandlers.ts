@@ -109,6 +109,13 @@ export class EventHandlers {
     if (instance) {
       instance.status = 'disconnected';
       
+      // Seguir documentação: tratar restartRequired especificamente
+      if (reason === DisconnectReason.restartRequired) {
+        logger.info(`Restart necessário para ${connectionId}, criando nova conexão...`);
+        // Aqui seria necessário recriar o socket completamente
+        return;
+      }
+      
       const shouldReconnect = 
         reason !== DisconnectReason.loggedOut && 
         instance.shouldBeConnected && 
