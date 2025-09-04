@@ -158,9 +158,21 @@ export class ConnectionManager {
       }
       
       try {
-        await instance.socket.logout();
+        if (instance.status === 'connected') {
+          await instance.socket.logout();
+        }
       } catch (error) {
-        logger.warn(`Erro ao fazer logout da instância ${connectionId}:`, error);
+        // Ignorar erros de logout para conexões já fechadas
+        if (error && typeof error === 'object' && 'output' in error) {
+          const output = (error as any).output;
+          if (output?.statusCode === 428 && output?.payload?.message === 'Connection Closed') {
+            logger.debug(`Conexão ${connectionId} já estava fechada durante logout`);
+          } else {
+            logger.warn(`Erro ao fazer logout da instância ${connectionId}:`, error);
+          }
+        } else {
+          logger.warn(`Erro ao fazer logout da instância ${connectionId}:`, error);
+        }
       }
     }
     

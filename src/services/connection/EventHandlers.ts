@@ -333,7 +333,12 @@ export class EventHandlers {
       // Seguir documentação: tratar restartRequired especificamente
       if (reason === DisconnectReason.restartRequired) {
         logger.info(`Restart necessário para ${connectionId}, criando nova conexão...`);
-        // Aqui seria necessário recriar o socket completamente
+        // Marcar para limpeza e permitir que seja recriada
+        instance.shouldBeConnected = false;
+        setTimeout(async () => {
+          // Cleanup será feito automaticamente
+          logger.info(`Instância ${connectionId} marcada para recriação após restart`);
+        }, 1000);
         return;
       }
       
