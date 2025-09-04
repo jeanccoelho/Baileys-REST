@@ -13,8 +13,8 @@ class WhatsAppService {
     
     // Passar a referência das instâncias para os outros serviços
     const instances = (this.connectionManager as any).instances;
-    this.messageService = new MessageService(instances);
     this.contactService = new ContactService(instances);
+    this.messageService = new MessageService(instances, this.contactService);
     
     // Limpeza periódica de instâncias desconectadas
     setInterval(async () => {
@@ -56,7 +56,7 @@ class WhatsAppService {
   }
 
   // Métodos de mensagem
-  async sendMessage(connectionId: string, to: string, message: string): Promise<void> {
+  async sendMessage(connectionId: string, to: string, message: string): Promise<{ success: boolean; wa_id?: string; message?: string }> {
     return this.messageService.sendMessage(connectionId, to, message);
   }
 
@@ -67,7 +67,7 @@ class WhatsAppService {
     fileName: string, 
     mimetype: string, 
     caption?: string
-  ): Promise<void> {
+  ): Promise<{ success: boolean; wa_id?: string; message?: string }> {
     return this.messageService.sendFile(connectionId, to, fileBuffer, fileName, mimetype, caption);
   }
 

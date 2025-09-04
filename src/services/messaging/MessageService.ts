@@ -2,11 +2,15 @@ import { delay } from '@whiskeysockets/baileys';
 import logger from '../../utils/logger';
 import { InstanceData } from '../types/InstanceData';
 import { MessageHandler } from './MessageHandler';
+import { ContactService } from '../contacts/ContactService';
 
 export class MessageService {
-  constructor(private instances: Map<string, InstanceData>) {}
+  constructor(
+    private instances: Map<string, InstanceData>,
+    private contactService: ContactService
+  ) {}
 
-  async sendMessage(connectionId: string, to: string, message: string): Promise<void> {
+  async sendMessage(connectionId: string, to: string, message: string): Promise<{ success: boolean; wa_id?: string; message?: string }> {
     const instance = this.instances.get(connectionId);
     
     if (!instance || instance.status !== 'connected') {
@@ -14,20 +18,31 @@ export class MessageService {
     }
 
     try {
-      const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
+      // Validar número e obter JID correto
+      const validJid = await this.contactService.getValidJid(connectionId, to);
+      
+      if (!validJid) {
+        throw new Error(`Número ${to} não está no WhatsApp ou é inválido`);
+      }
       
       // Simular digitação para parecer mais natural
-      await instance.socket.presenceSubscribe(jid);
+      await instance.socket.presenceSubscribe(validJid);
       await delay(500);
-      await instance.socket.sendPresenceUpdate('composing', jid);
+      await instance.socket.sendPresenceUpdate('composing', validJid);
       await delay(Math.min(message.length * 50, 3000));
-      await instance.socket.sendPresenceUpdate('paused', jid);
+      await instance.socket.sendPresenceUpdate('paused', validJid);
       await delay(500);
       
-      await instance.socket.sendMessage(jid, { text: message });
+      await instance.socket.sendMessage(validJid, { text: message });
       
       instance.lastActivity = new Date();
-      logger.info(`Mensagem enviada de ${connectionId} para ${to}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
+      logger.info(`Mensagem enviada de ${connectionId} para ${validJid}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`);
+      
+      return {
+        success: true,
+        wa_id: validJid,
+        message: 'Mensagem enviada com sucesso'
+      };
     } catch (error) {
       logger.error(`Erro ao enviar mensagem de ${connectionId}:`, error);
       throw error;
@@ -41,7 +56,7 @@ export class MessageService {
     fileName: string, 
     mimetype: string, 
     caption?: string
-  ): Promise<void> {
+  ): Promise<{ success: boolean; wa_id?: string; message?: string }> {
     const instance = this.instances.get(connectionId);
     
     if (!instance || instance.status !== 'connected') {
@@ -49,7 +64,12 @@ export class MessageService {
     }
 
     try {
-      const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
+      // Validar número e obter JID correto
+      const validJid = await this.contactService.getValidJid(connectionId, to);
+      
+      if (!validJid) {
+        throw new Error(`Número ${to} não está no WhatsApp ou é inválido`);
+      }
       
       const messageContent: any = {
         fileName,
@@ -68,10 +88,16 @@ export class MessageService {
         messageContent.document = fileBuffer;
       }
 
-      await instance.socket.sendMessage(jid, messageContent);
+      await instance.socket.sendMessage(validJid, messageContent);
       
       instance.lastActivity = new Date();
-      logger.info(`Arquivo enviado de ${connectionId} para ${to}: ${fileName} (${mimetype})`);
+      logger.info(`Arquivo enviado de ${connectionId} para ${validJid}: ${fileName} (${mimetype})`);
+      
+      return {
+        success: true,
+        wa_id: validJid,
+        message: 'Arquivo enviado com sucesso'
+      };
     } catch (error) {
       logger.error(`Erro ao enviar arquivo de ${connectionId}:`, error);
       throw error;

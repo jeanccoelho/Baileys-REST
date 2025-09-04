@@ -19,11 +19,15 @@ export const sendMessage = async (
       return;
     }
 
-    await whatsappService.sendMessage(connectionId, to, message);
+    const result = await whatsappService.sendMessage(connectionId, to, message);
     
     res.json({
       success: true,
-      message: 'Message sent successfully'
+      data: {
+        wa_id: result.wa_id,
+        original_number: to
+      },
+      message: result.message || 'Message sent successfully'
     });
   } catch (error) {
     logger.error('Error sending message:', error);
@@ -52,7 +56,7 @@ export const sendFile = async (
       return;
     }
 
-    await whatsappService.sendFile(
+    const result = await whatsappService.sendFile(
       connectionId,
       to,
       file.buffer,
@@ -63,7 +67,13 @@ export const sendFile = async (
     
     res.json({
       success: true,
-      message: 'File sent successfully'
+      data: {
+        wa_id: result.wa_id,
+        original_number: to,
+        file_name: file.originalname,
+        file_type: file.mimetype
+      },
+      message: result.message || 'File sent successfully'
     });
   } catch (error) {
     logger.error('Error sending file:', error);

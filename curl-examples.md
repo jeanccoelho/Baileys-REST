@@ -130,6 +130,20 @@ curl -X POST http://localhost:3000/api/send-message \
   }'
 ```
 
+**Resposta esperada:**
+```json
+{
+  "success": true,
+  "data": {
+    "wa_id": "5511999999999@s.whatsapp.net",
+    "original_number": "5511999999999"
+  },
+  "message": "Mensagem enviada com sucesso"
+}
+```
+
+**Nota**: Para números brasileiros, a API testa automaticamente os formatos com e sem o 9 (ex: 5511999999999 e 551199999999) e retorna o `wa_id` correto.
+
 ### 6. Enviar Arquivo (Imagem)
 ```bash
 curl -X POST http://localhost:3000/api/send-file \
@@ -137,6 +151,20 @@ curl -X POST http://localhost:3000/api/send-file \
   -F "to=5511999999999" \
   -F "caption=Legenda da imagem" \
   -F "file=@/caminho/para/sua/imagem.jpg"
+```
+
+**Resposta esperada:**
+```json
+{
+  "success": true,
+  "data": {
+    "wa_id": "5511999999999@s.whatsapp.net",
+    "original_number": "5511999999999",
+    "file_name": "imagem.jpg",
+    "file_type": "image/jpeg"
+  },
+  "message": "Arquivo enviado com sucesso"
+}
 ```
 
 ### 7. Enviar Arquivo (Documento PDF)
