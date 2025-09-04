@@ -24,7 +24,7 @@ import {
 interface InstanceData {
   instanceId: string;
   socket: WASocket;
-  status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending';
+  status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending' | 'code_pending';
   qr?: string;
   profilePicture?: string;
   number?: string;
