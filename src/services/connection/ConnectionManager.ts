@@ -65,7 +65,7 @@ export class ConnectionManager {
         browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
-        syncFullHistory: false,
+        syncFullHistory: true,
         shouldSyncHistoryMessage: () => true, // Habilitar sync de histórico
         getMessage: async (key) => {
           return { conversation: '' };
@@ -435,7 +435,7 @@ export class ConnectionManager {
         browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
-        syncFullHistory: false,
+        syncFullHistory: true,
         shouldSyncHistoryMessage: () => true, // Habilitar sync de histórico
         getMessage: async (key) => {
           return { conversation: '' };
