@@ -337,13 +337,26 @@ export class EventHandlers {
         return;
       }
       
+      // Casos que requerem limpeza imediata
+      const permanentDisconnectReasons = [
+        DisconnectReason.loggedOut,
+        DisconnectReason.badSession,
+        DisconnectReason.multideviceMismatch,
+        401, // Unauthorized
+        403, // Forbidden
+        428  // Precondition Required
+      ];
+      
+      if (permanentDisconnectReasons.includes(reason)) {
+        logger.warn(`Instância ${connectionId} desconectada permanentemente. Razão: ${reason}`);
+        instance.shouldBeConnected = false;
+        // Cleanup será feito pelo ConnectionManager
+        return;
+      }
+      
       const shouldReconnect = 
-        reason !== DisconnectReason.loggedOut && 
         instance.shouldBeConnected && 
-        reason !== 403 &&
-        reason !== 401 &&
-        reason !== DisconnectReason.badSession &&
-        reason !== DisconnectReason.multideviceMismatch;
+        instance.reconnectionAttempts < 5;
 
       if (shouldReconnect) {
         const attempts = instance.reconnectionAttempts;
@@ -352,17 +365,15 @@ export class EventHandlers {
         logger.info(`Reconectando ${connectionId} em ${delayTime / 1000}s... (tentativa ${attempts + 1})`);
         
         instance.reconnectTimeout = setTimeout(async () => {
-          if (instance.shouldBeConnected && instance.reconnectionAttempts < 10) {
+          if (instance.shouldBeConnected && instance.reconnectionAttempts < 5) {
             instance.reconnectionAttempts++;
             // Aqui seria necessário chamar o método de reconexão do ConnectionManager
           } else {
-            logger.warn(`Máximo de tentativas de reconexão atingido para ${connectionId}`);
+            logger.warn(`Máximo de tentativas de reconexão atingido para ${connectionId}, removendo instância`);
+            instance.shouldBeConnected = false;
             // Aqui seria necessário chamar o cleanup do ConnectionManager
           }
         }, delayTime);
-      } else {
-        logger.warn(`Instância ${connectionId} desconectada permanentemente. Razão: ${reason}`);
-        // Aqui seria necessário chamar o cleanup do ConnectionManager
       }
     }
   }

@@ -172,12 +172,16 @@ export class ConnectionManager {
     const instance = this.instances.get(connectionId);
     
     if (instance) {
+      instance.shouldBeConnected = false;
+      
       if (instance.reconnectTimeout) {
         clearTimeout(instance.reconnectTimeout);
       }
       
       try {
-        instance.socket.end(undefined);
+        if (instance.socket && typeof instance.socket.end === 'function') {
+          instance.socket.end(undefined);
+        }
       } catch (error) {
         logger.warn(`Erro ao encerrar socket ${connectionId}:`, error);
       }
@@ -244,11 +248,34 @@ export class ConnectionManager {
 
       logger.info(`Restaurando ${instanceDirs.length} instâncias...`);
 
+      // Limpar instâncias antigas primeiro
+      for (const instanceId of instanceDirs) {
+        const authPath = path.join(this.AUTH_DIR, instanceId);
+        const credsPath = path.join(authPath, 'creds.json');
+        
+        // Se não tem credenciais válidas, remover
+        if (!fs.existsSync(credsPath)) {
+          try {
+            fs.rmSync(authPath, { recursive: true, force: true });
+            logger.info(`Instância inválida removida: ${instanceId}`);
+            continue;
+          } catch (error) {
+            logger.error(`Erro ao remover instância inválida ${instanceId}:`, error);
+          }
+        }
+      }
+
+      // Recarregar lista após limpeza
+      const validInstanceDirs = fs.readdirSync(this.AUTH_DIR)
+        .filter(file => fs.statSync(path.join(this.AUTH_DIR, file)).isDirectory());
+
       for (const instanceId of instanceDirs) {
         try {
           await this.restoreInstance(instanceId);
         } catch (error) {
           logger.error(`Erro ao restaurar instância ${instanceId}:`, error);
+          // Remover instância com erro
+          await this.cleanup(instanceId);
         }
       }
     } catch (error) {

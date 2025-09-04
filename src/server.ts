@@ -43,6 +43,16 @@ process.on('unhandledRejection', (reason, promise) => {
     promise: promise,
     stack: reason instanceof Error ? reason.stack : undefined
   });
+  
+  // Se for erro de Connection Closed, não é crítico
+  if (reason && typeof reason === 'object' && 'output' in reason) {
+    const output = (reason as any).output;
+    if (output?.statusCode === 428 && output?.payload?.message === 'Connection Closed') {
+      logger.debug('Connection Closed error handled gracefully');
+      return;
+    }
+  }
+  
   // Não sair do processo imediatamente em desenvolvimento
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
