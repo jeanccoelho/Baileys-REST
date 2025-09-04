@@ -20,11 +20,195 @@ export class EventHandlers {
         }
       });
 
-      sock.ev.on('contacts.upsert', async (contacts: Contact[]) => {
+      // History Sync Events
+      sock.ev.on('messaging-history.set', async ({ chats, contacts, messages, syncType }) => {
         try {
-          logger.info(`Recebidos ${contacts.length} contatos para ${connectionId}`);
+          logger.info(`History sync para ${connectionId}: ${chats?.length || 0} chats, ${contacts?.length || 0} contatos, ${messages?.length || 0} mensagens (tipo: ${syncType})`);
+          
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
+        } catch (error) {
+          logger.error(`Erro no evento messaging-history.set para ${connectionId}:`, error);
+        }
+      });
+
+      // Message Events
+      sock.ev.on('messages.upsert', async ({ type, messages }) => {
+        try {
+          if (type === 'notify') {
+            // Novas mensagens em tempo real
+            for (const message of messages) {
+              logger.info(`Nova mensagem recebida em ${connectionId} de ${message.key.remoteJid}`);
+            }
+          } else {
+            // Mensagens antigas já vistas/processadas
+            logger.debug(`Mensagens antigas processadas em ${connectionId}: ${messages.length}`);
+          }
+          
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
+        } catch (error) {
+          logger.error(`Erro no evento messages.upsert para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('messages.update', async (updates) => {
+        try {
+          logger.debug(`Atualizações de mensagem em ${connectionId}: ${updates.length}`);
+          
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
+        } catch (error) {
+          logger.error(`Erro no evento messages.update para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('messages.delete', async (deletions) => {
+        try {
+          logger.info(`Mensagens deletadas em ${connectionId}: ${deletions.keys.length}`);
+        } catch (error) {
+          logger.error(`Erro no evento messages.delete para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('messages.reaction', async (reactions) => {
+        try {
+          for (const reaction of reactions) {
+            logger.info(`Reação ${reaction.reaction.text || 'removida'} em mensagem de ${reaction.key.remoteJid} em ${connectionId}`);
+          }
+        } catch (error) {
+          logger.error(`Erro no evento messages.reaction para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('message-receipt.update', async (receipts) => {
+        try {
+          logger.debug(`Recibos de mensagem atualizados em ${connectionId}: ${receipts.length}`);
+        } catch (error) {
+          logger.error(`Erro no evento message-receipt.update para ${connectionId}:`, error);
+        }
+      });
+
+      // Chat Events
+      sock.ev.on('chats.upsert', async (chats) => {
+        try {
+          logger.info(`Novos chats em ${connectionId}: ${chats.length}`);
+          
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
+        } catch (error) {
+          logger.error(`Erro no evento chats.upsert para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('chats.update', async (updates) => {
+        try {
+          logger.debug(`Chats atualizados em ${connectionId}: ${updates.length}`);
+          
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
+        } catch (error) {
+          logger.error(`Erro no evento chats.update para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('chats.delete', async (deletions) => {
+        try {
+          logger.info(`Chats deletados em ${connectionId}: ${deletions.length}`);
+        } catch (error) {
+          logger.error(`Erro no evento chats.delete para ${connectionId}:`, error);
+        }
+      });
+
+      // Contact Events
+      sock.ev.on('contacts.upsert', async (contacts) => {
+        try {
+          logger.info(`Novos contatos em ${connectionId}: ${contacts.length}`);
+          
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
         } catch (error) {
           logger.error(`Erro no evento contacts.upsert para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('contacts.update', async (updates) => {
+        try {
+          logger.debug(`Contatos atualizados em ${connectionId}: ${updates.length}`);
+        } catch (error) {
+          logger.error(`Erro no evento contacts.update para ${connectionId}:`, error);
+        }
+      });
+
+      // Blocklist Events
+      sock.ev.on('blocklist.set', async ({ blocklist }) => {
+        try {
+          logger.info(`Lista de bloqueados definida em ${connectionId}: ${blocklist.length} contatos`);
+        } catch (error) {
+          logger.error(`Erro no evento blocklist.set para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('blocklist.update', async ({ blocklist, type }) => {
+        try {
+          logger.info(`Lista de bloqueados ${type} em ${connectionId}: ${blocklist.length} contatos`);
+        } catch (error) {
+          logger.error(`Erro no evento blocklist.update para ${connectionId}:`, error);
+        }
+      });
+
+      // Call Events
+      sock.ev.on('call', async (calls) => {
+        try {
+          for (const call of calls) {
+            logger.info(`Chamada ${call.status} de ${call.from} em ${connectionId}`);
+          }
+        } catch (error) {
+          logger.error(`Erro no evento call para ${connectionId}:`, error);
+        }
+      });
+
+      // Group Events
+      sock.ev.on('groups.upsert', async (groups) => {
+        try {
+          logger.info(`Novos grupos em ${connectionId}: ${groups.length}`);
+          
+          const instance = this.instances.get(connectionId);
+          if (instance) {
+            instance.lastActivity = new Date();
+          }
+        } catch (error) {
+          logger.error(`Erro no evento groups.upsert para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('groups.update', async (updates) => {
+        try {
+          logger.debug(`Grupos atualizados em ${connectionId}: ${updates.length}`);
+        } catch (error) {
+          logger.error(`Erro no evento groups.update para ${connectionId}:`, error);
+        }
+      });
+
+      sock.ev.on('group-participants.update', async (updates) => {
+        try {
+          for (const update of updates) {
+            logger.info(`Participantes do grupo ${update.id} ${update.action} em ${connectionId}: ${update.participants.length} usuários`);
+          }
+        } catch (error) {
+          logger.error(`Erro no evento group-participants.update para ${connectionId}:`, error);
         }
       });
 
@@ -32,16 +216,6 @@ export class EventHandlers {
         await this.handleConnectionUpdate(update, connectionId, sock);
       });
 
-      sock.ev.on('messages.upsert', async (m) => {
-        try {
-          const instance = this.instances.get(connectionId);
-          if (instance) {
-            instance.lastActivity = new Date();
-          }
-        } catch (error) {
-          logger.error(`Erro no handler de mensagens para ${connectionId}:`, error);
-        }
-      });
 
     } catch (error) {
       logger.error(`Erro ao configurar event handlers para ${connectionId}:`, error);
