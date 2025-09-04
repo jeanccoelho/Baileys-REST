@@ -65,7 +65,7 @@ export class ConnectionManager {
         auth: {
           ...state,
           creds: state.creds,
-          keys: makeCacheableSignalKeyStore(state.keys, logger as any)
+          keys: state.keys
         },
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
@@ -277,7 +277,7 @@ export class ConnectionManager {
         auth: {
           ...state,
           creds: state.creds,
-          keys: makeCacheableSignalKeyStore(state.keys, logger as any)
+          keys: state.keys
         },
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
