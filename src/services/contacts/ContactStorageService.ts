@@ -6,11 +6,15 @@ export class ContactStorageService {
   private supabase;
 
   constructor() {
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase URL e ANON_KEY são obrigatórios no arquivo .env');
+      console.warn('⚠️  Supabase não configurado. Funcionalidades de contatos armazenados não estarão disponíveis.');
+      console.warn('   Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env');
+      // Criar cliente mock para evitar erros
+      this.supabase = null as any;
+      return;
     }
 
     this.supabase = createClient(supabaseUrl, supabaseKey);
@@ -28,6 +32,10 @@ export class ContactStorageService {
   }
 
   async createContact(userId: string, data: CreateContactRequest): Promise<Contact> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     const phoneNumber = this.validatePhoneNumber(data.phone_number);
 
     // Verificar se número já existe para este usuário
@@ -62,6 +70,10 @@ export class ContactStorageService {
   }
 
   async getContacts(userId: string): Promise<Contact[]> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     const { data: contacts, error } = await this.supabase
       .from('contacts')
       .select('*')
@@ -77,6 +89,10 @@ export class ContactStorageService {
   }
 
   async getContactById(userId: string, contactId: string): Promise<Contact | null> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     const { data: contact, error } = await this.supabase
       .from('contacts')
       .select('*')
@@ -96,6 +112,10 @@ export class ContactStorageService {
   }
 
   async updateContact(userId: string, contactId: string, data: UpdateContactRequest): Promise<Contact> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     const { data: contact, error } = await this.supabase
       .from('contacts')
       .update({
@@ -121,6 +141,10 @@ export class ContactStorageService {
   }
 
   async deleteContact(userId: string, contactId: string): Promise<void> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     const { error } = await this.supabase
       .from('contacts')
       .delete()
@@ -136,6 +160,10 @@ export class ContactStorageService {
   }
 
   async importContacts(userId: string, phoneNumbers: string[]): Promise<ImportResult> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     // Buscar contatos existentes do usuário
     const { data: existingContacts } = await this.supabase
       .from('contacts')
@@ -191,6 +219,10 @@ export class ContactStorageService {
   }
 
   async deleteAllContacts(userId: string): Promise<number> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     // Contar contatos antes de remover
     const { count } = await this.supabase
       .from('contacts')
@@ -225,6 +257,10 @@ export class ContactStorageService {
       verifiedName?: string;
     }
   ): Promise<Contact> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     const { data: contact, error } = await this.supabase
       .from('contacts')
       .update({
@@ -275,6 +311,10 @@ export class ContactStorageService {
   }
 
   async getContactsWithWhatsAppData(userId: string): Promise<Contact[]> {
+    if (!this.supabase) {
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+    }
+
     const { data: contacts, error } = await this.supabase
       .from('contacts')
       .select('*')
