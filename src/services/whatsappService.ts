@@ -100,6 +100,7 @@ class WhatsAppService {
       const instance = this.instances.get(connectionId);
 
       try {
+      try {
         if (qr && instance) {
           qrCode = await QRCode.toDataURL(qr);
           instance.qr = qrCode;
@@ -171,10 +172,11 @@ class WhatsAppService {
           }
         }
       }
-    }).catch((error) => {
-      logger.error(`Erro no event handler connection.update para ${connectionId}:`, error);
-      if (instanceData) {
-        instanceData.status = 'disconnected';
+      } catch (error) {
+        logger.error(`Erro no event handler connection.update para ${connectionId}:`, error);
+        if (instance) {
+          instance.status = 'disconnected';
+        }
       }
     });
 
