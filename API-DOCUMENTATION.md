@@ -125,6 +125,138 @@ Authorization: Bearer <token>
 
 ## 📱 Gerenciamento de Conexões WhatsApp
 
+---
+
+## 📞 Gerenciamento de Contatos Armazenados
+
+### 20. Criar Contato
+```http
+POST /api/contacts-storage
+Authorization: Bearer <token>
+```
+
+**Body:**
+```json
+{
+  "phoneNumber": "5511999999999",
+  "name": "João Silva"
+}
+```
+
+**Resposta (201):**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-v4",
+    "userId": "user-uuid",
+    "phoneNumber": "5511999999999",
+    "name": "João Silva",
+    "createdAt": "2024-01-01T10:00:00.000Z",
+    "updatedAt": "2024-01-01T10:00:00.000Z"
+  },
+  "message": "Contato criado com sucesso"
+}
+```
+
+### 21. Listar Contatos Armazenados
+```http
+GET /api/contacts-storage
+Authorization: Bearer <token>
+```
+
+**Resposta (200):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "uuid-v4",
+      "userId": "user-uuid",
+      "phoneNumber": "5511999999999",
+      "name": "João Silva",
+      "createdAt": "2024-01-01T10:00:00.000Z",
+      "updatedAt": "2024-01-01T10:00:00.000Z"
+    }
+  ],
+  "message": "Contatos recuperados com sucesso"
+}
+```
+
+### 22. Obter Contato por ID
+```http
+GET /api/contacts-storage/:contactId
+Authorization: Bearer <token>
+```
+
+### 23. Atualizar Contato
+```http
+PUT /api/contacts-storage/:contactId
+Authorization: Bearer <token>
+```
+
+**Body:**
+```json
+{
+  "name": "João Silva Santos"
+}
+```
+
+### 24. Remover Contato
+```http
+DELETE /api/contacts-storage/:contactId
+Authorization: Bearer <token>
+```
+
+### 25. Importar Contatos via TXT
+```http
+POST /api/contacts-storage/import
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+```
+
+**Form Data:**
+- `file`: Arquivo TXT com números (um por linha)
+
+**Exemplo de arquivo TXT:**
+```
+5511999999999
+5511888888888
+5511777777777
+```
+
+**Resposta (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "imported": 2,
+    "skipped": 1,
+    "errors": ["5511invalid: Número de telefone deve ter entre 10 e 15 dígitos"]
+  },
+  "message": "Importação concluída: 2 importados, 1 ignorados, 1 erros"
+}
+```
+
+### 26. Remover Todos os Contatos
+```http
+DELETE /api/contacts-storage
+Authorization: Bearer <token>
+```
+
+**Resposta (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "deletedCount": 15
+  },
+  "message": "15 contatos removidos com sucesso"
+}
+```
+
+---
+
 ### 7. Criar Nova Conexão (QR Code)
 ```http
 POST /api/connection
@@ -487,6 +619,62 @@ Authorization: Bearer <token>
 
 ## 🎯 Exemplos de Uso Frontend
 
+### 1. Gerenciar Contatos Armazenados
+```javascript
+// Criar contato
+const createContact = async (phoneNumber, name) => {
+  const response = await fetch('/api/contacts-storage', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ phoneNumber, name })
+  });
+  
+  const result = await response.json();
+  return result;
+};
+
+// Listar contatos
+const loadContacts = async () => {
+  const response = await fetch('/api/contacts-storage', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  
+  const { data: contacts } = await response.json();
+  
+  // Renderizar lista de contatos
+  const contactList = document.getElementById('contact-list');
+  contactList.innerHTML = contacts.map(contact => `
+    <div class="contact-item" data-id="${contact.id}">
+      <div class="contact-name">${contact.name || 'Sem nome'}</div>
+      <div class="contact-phone">${contact.phoneNumber}</div>
+      <button onclick="deleteContact('${contact.id}')">Remover</button>
+    </div>
+  `).join('');
+};
+
+// Importar contatos via TXT
+const importContacts = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await fetch('/api/contacts-storage/import', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData
+  });
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    alert(`Importação concluída: ${result.data.imported} importados, ${result.data.skipped} ignorados`);
+    loadContacts(); // Recarregar lista
+  }
+};
+```
+
 ### 1. Fluxo de Autenticação
 ```javascript
 // Login
@@ -620,16 +808,21 @@ const sendFile = async (to, file, caption = '') => {
 1. **LoginForm** - Formulário de login/registro
 2. **ConnectionManager** - Gerenciar conexões WhatsApp
 3. **QRCodeDisplay** - Exibir QR Code para conexão
-4. **ChatList** - Lista de conversas
-5. **ChatWindow** - Janela de conversa
-6. **MessageInput** - Input para enviar mensagens
-7. **FileUpload** - Upload de arquivos
-8. **ContactList** - Lista de contatos
-9. **StatusIndicator** - Status da conexão
+4. **ContactManager** - Gerenciar contatos armazenados
+5. **ContactImport** - Importar contatos via TXT
+6. **ChatList** - Lista de conversas
+7. **ChatWindow** - Janela de conversa
+8. **MessageInput** - Input para enviar mensagens
+9. **FileUpload** - Upload de arquivos
+10. **ContactList** - Lista de contatos do WhatsApp
+11. **StatusIndicator** - Status da conexão
 
 ### Funcionalidades Recomendadas:
 - ✅ Auto-refresh do status da conexão
 - ✅ Notificações em tempo real
+- ✅ Gerenciamento completo de contatos
+- ✅ Importação de contatos via arquivo TXT
+- ✅ Validação de números de telefone
 - ✅ Upload de arquivos por drag & drop
 - ✅ Preview de imagens/vídeos
 - ✅ Busca em chats e contatos

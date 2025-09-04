@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
 import authRoutes from './authRoutes';
+import contactStorageRoutes from './contactStorageRoutes';
 import { authenticate } from '../middleware/authMiddleware';
 import {
   sendMessage,
@@ -43,6 +44,9 @@ const uploadMiddleware = upload.single('file');
 
 // Rotas de autenticação
 router.use('/auth', authRoutes);
+
+// Rotas de contatos armazenados
+router.use('/contacts-storage', contactStorageRoutes);
 
 // Rotas de mensagens (protegidas)
 router.post('/send-message', authenticate, asyncHandler(sendMessage));
