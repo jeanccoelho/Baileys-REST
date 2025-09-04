@@ -90,10 +90,27 @@ curl -X GET http://localhost:3000/api/auth/profile \
 
 ## 🔌 Endpoints de Conexão
 
+**⚠️ IMPORTANTE: Todas as rotas do WhatsApp agora requerem autenticação JWT!**
+
+### 0. Primeiro, faça login e obtenha o token
+```bash
+# Login para obter JWT token
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "joao@exemplo.com",
+    "password": "MinhaSenh@123"
+  }'
+
+# Salve o token retornado
+export JWT_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
 ### 1. Criar Nova Conexão WhatsApp (QR Code)
 ```bash
 curl -X POST http://localhost:3000/api/connection \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{"pairingMethod": "qr"}'
 ```
 
@@ -115,6 +132,7 @@ curl -X POST http://localhost:3000/api/connection \
 ```bash
 curl -X POST http://localhost:3000/api/connection \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "pairingMethod": "code",
     "phoneNumber": "5511999999999"
@@ -139,6 +157,7 @@ curl -X POST http://localhost:3000/api/connection \
 ```bash
 curl -X PUT http://localhost:3000/api/connection \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "connectionId": "SEU_CONNECTION_ID_AQUI",
     "code": "codigo-de-emparelhamento"
@@ -147,12 +166,14 @@ curl -X PUT http://localhost:3000/api/connection \
 
 ### 3. Listar Todas as Conexões
 ```bash
-curl -X GET http://localhost:3000/api/connection
+curl -X GET http://localhost:3000/api/connection \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ### 3.1. Obter Status de Conexão Específica (com QR Code atualizado)
 ```bash
-curl -X GET http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI
+curl -X GET http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 **Resposta esperada:**
@@ -173,12 +194,14 @@ curl -X GET http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI
 
 ### 4. Remover Conexão Específica
 ```bash
-curl -X DELETE http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI
+curl -X DELETE http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ### 4.1. Reiniciar Conexão Específica
 ```bash
-curl -X POST http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI/restart
+curl -X POST http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI/restart \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 **Resposta esperada:**
@@ -199,6 +222,7 @@ curl -X POST http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI/restart
 ```bash
 curl -X POST http://localhost:3000/api/send-message \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "connectionId": "SEU_CONNECTION_ID_AQUI",
     "to": "5511999999999",
@@ -223,6 +247,7 @@ curl -X POST http://localhost:3000/api/send-message \
 ### 6. Enviar Arquivo (Imagem)
 ```bash
 curl -X POST http://localhost:3000/api/send-file \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -F "connectionId=SEU_CONNECTION_ID_AQUI" \
   -F "to=5511999999999" \
   -F "caption=Legenda da imagem" \
@@ -246,6 +271,7 @@ curl -X POST http://localhost:3000/api/send-file \
 ### 7. Enviar Arquivo (Documento PDF)
 ```bash
 curl -X POST http://localhost:3000/api/send-file \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -F "connectionId=SEU_CONNECTION_ID_AQUI" \
   -F "to=5511999999999" \
   -F "caption=Documento importante" \
@@ -255,6 +281,7 @@ curl -X POST http://localhost:3000/api/send-file \
 ### 8. Enviar Arquivo (Áudio)
 ```bash
 curl -X POST http://localhost:3000/api/send-file \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -F "connectionId=SEU_CONNECTION_ID_AQUI" \
   -F "to=5511999999999" \
   -F "file=@/caminho/para/audio.mp3"
@@ -264,6 +291,7 @@ curl -X POST http://localhost:3000/api/send-file \
 ```bash
 curl -X POST http://localhost:3000/api/validate-number \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "connectionId": "SEU_CONNECTION_ID_AQUI",
     "number": "5511999999999"
@@ -288,12 +316,14 @@ curl -X POST http://localhost:3000/api/validate-number \
 
 ### 10. Listar Contatos
 ```bash
-curl -X GET http://localhost:3000/api/contacts/SEU_CONNECTION_ID_AQUI
+curl -X GET http://localhost:3000/api/contacts/SEU_CONNECTION_ID_AQUI \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ### 11. Listar Grupos
 ```bash
-curl -X GET http://localhost:3000/api/groups/SEU_CONNECTION_ID_AQUI
+curl -X GET http://localhost:3000/api/groups/SEU_CONNECTION_ID_AQUI \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ## 📱 Exemplos com Números Brasileiros
@@ -302,6 +332,7 @@ curl -X GET http://localhost:3000/api/groups/SEU_CONNECTION_ID_AQUI
 ```bash
 curl -X POST http://localhost:3000/api/send-message \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "connectionId": "SEU_CONNECTION_ID_AQUI",
     "to": "5511987654321",
@@ -313,6 +344,7 @@ curl -X POST http://localhost:3000/api/send-message \
 ```bash
 curl -X POST http://localhost:3000/api/send-message \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "connectionId": "SEU_CONNECTION_ID_AQUI",
     "to": "120363043123456789@g.us",
@@ -322,10 +354,34 @@ curl -X POST http://localhost:3000/api/send-message \
 
 ## 🔄 Fluxo Completo de Uso
 
-### Passo 1: Criar conexão
+### Passo 0: Autenticar
+```bash
+# Registrar usuário (se necessário)
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Seu Nome",
+    "email": "seu@email.com",
+    "password": "SuaSenha@123"
+  }'
+
+# Ou fazer login
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "seu@email.com",
+    "password": "SuaSenha@123"
+  }'
+
+# Salvar o token
+export JWT_TOKEN="token-retornado-aqui"
+```
+
+### Passo 1: Criar conexão (com autenticação)
 ```bash
 curl -X POST http://localhost:3000/api/connection \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ### Passo 2: Escanear QR Code
@@ -333,13 +389,15 @@ curl -X POST http://localhost:3000/api/connection \
 
 ### Passo 3: Verificar conexões ativas
 ```bash
-curl -X GET http://localhost:3000/api/connection
+curl -X GET http://localhost:3000/api/connection \
+  -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
 ### Passo 4: Enviar mensagem de teste
 ```bash
 curl -X POST http://localhost:3000/api/send-message \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $JWT_TOKEN" \
   -d '{
     "connectionId": "CONNECTION_ID_DO_PASSO_1",
     "to": "SEU_NUMERO_DE_TESTE",
@@ -383,6 +441,8 @@ curl -X GET http://localhost:3000/api/auth/profile \
 
 ## 📝 Notas Importantes
 
+- **Autenticação Obrigatória**: Todas as rotas do WhatsApp agora requerem JWT token
+- **Isolamento por Usuário**: Cada usuário só acessa suas próprias conexões
 - **Connection ID**: Sempre use o ID retornado ao criar uma conexão
 - **JWT Token**: Salve o token após login/registro para usar em endpoints protegidos
 - **Senhas**: Devem ter pelo menos 6 caracteres, com maiúscula, minúscula e número
