@@ -63,4 +63,5 @@ app.listen(PORT, async () => {
   logger.info('PUT /api/connection - Validate connection with code');
   logger.info('DELETE /api/connection/:connectionId - Remove connection');
   logger.info('GET /api/connection - List all connections');
+  logger.info('GET /api/connection/:connectionId - Get connection status with QR code');
 });

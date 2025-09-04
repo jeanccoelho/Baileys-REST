@@ -14,7 +14,8 @@ import {
   createConnection,
   validateConnection,
   removeConnection,
-  getAllConnections
+  getAllConnections,
+  getConnectionStatus
 } from '../controllers/connectionController';
 import { asyncHandler } from '../middleware/errorHandler';
 
@@ -81,5 +82,6 @@ router.post('/connection', asyncHandler(createConnection));
 router.put('/connection', asyncHandler(validateConnection));
 router.delete('/connection/:connectionId', asyncHandler(removeConnection));
 router.get('/connection', asyncHandler(getAllConnections));
+router.get('/connection/:connectionId', asyncHandler(getConnectionStatus));
 
 export default router;

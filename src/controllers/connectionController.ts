@@ -155,3 +155,45 @@ export const getAllConnections = async (
     });
   }
 };
+
+export const getConnectionStatus = async (
+  req: Request<{ connectionId: string }>,
+  res: Response<ApiResponse>
+): Promise<void> => {
+  try {
+    const { connectionId } = req.params;
+    
+    if (!connectionId) {
+      res.status(400).json({
+        success: false,
+        error: 'Connection ID is required',
+        message: 'Missing connection ID parameter'
+      });
+      return;
+    }
+
+    const connection = whatsappService.getConnection(connectionId);
+    
+    if (!connection) {
+      res.status(404).json({
+        success: false,
+        error: 'Connection not found',
+        message: 'The specified connection does not exist'
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      data: connection,
+      message: 'Connection status retrieved successfully'
+    });
+  } catch (error) {
+    logger.error('Error retrieving connection status:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      message: 'Failed to retrieve connection status'
+    });
+  }
+};

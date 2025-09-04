@@ -77,6 +77,27 @@ curl -X PUT http://localhost:3000/api/connection \
 curl -X GET http://localhost:3000/api/connection
 ```
 
+### 3.1. Obter Status de Conexão Específica (com QR Code atualizado)
+```bash
+curl -X GET http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI
+```
+
+**Resposta esperada:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "uuid-v4-aqui",
+    "status": "qr_pending",
+    "qr": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "createdAt": "2024-01-01T10:00:00.000Z",
+    "lastActivity": null,
+    "phoneNumber": null
+  },
+  "message": "Connection status retrieved successfully"
+}
+```
+
 ### 4. Remover Conexão Específica
 ```bash
 curl -X DELETE http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI
