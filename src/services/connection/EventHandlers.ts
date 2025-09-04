@@ -32,10 +32,6 @@ export class EventHandlers {
         await this.handleConnectionUpdate(update, connectionId, sock);
       });
 
-      sock.ev.on('CB:call', () => {
-        // Ignorar chamadas para evitar logs desnecessários
-      });
-
       sock.ev.on('messages.upsert', async (m) => {
         try {
           const instance = this.instances.get(connectionId);
