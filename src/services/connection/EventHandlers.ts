@@ -381,7 +381,7 @@ export class EventHandlers {
           clearTimeout(instance.reconnectTimeout);
           instance.reconnectTimeout = undefined;
         }
-        
+          logger.info(`Participantes do grupo ${updates.id} ${updates.action} em ${connectionId}: ${updates.participants.length} usuários`);
         logger.info(`Instância ${connectionId} conectada com número: ${number}`);
       } catch (error) {
         logger.error(`Erro ao obter dados do perfil para ${connectionId}:`, error);
