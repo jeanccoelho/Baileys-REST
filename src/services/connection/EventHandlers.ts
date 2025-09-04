@@ -99,7 +99,7 @@ export class EventHandlers {
               // await markMessageAsDeleted(deletion.id);
             }
           } else {
-            logger.info(`Mensagem deletada em ${connectionId}: ${deletions.id} de ${deletions.remoteJid}`);
+            logger.info(`Todas as mensagens deletadas em ${connectionId} para ${deletions.jid}`);
           }
         } catch (error) {
           logger.error(`Erro no evento messages.delete para ${connectionId}:`, error);
