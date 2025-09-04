@@ -328,14 +328,9 @@ export class EventHandlers {
       // Seguir documentação: tratar restartRequired especificamente
       if (reason === DisconnectReason.restartRequired) {
         logger.info(`Restart necessário para ${connectionId}, criando nova conexão...`);
-        this.performAutoRestart(connectionId, instance);
-        return;
-      }
-      
-      // Código 515 também precisa de restart automático
-      if (reason === 515) {
-        logger.info(`Código 515 detectado para ${connectionId}, restart automático necessário`);
-        this.performAutoRestart(connectionId, instance);
+        // Marcar para recriação automática mais rápida
+        instance.shouldBeConnected = false; // Evitar reconexões automáticas
+        logger.info(`Use POST /api/connection/${connectionId}/restart para reiniciar a instância`);
         return;
       }
       
@@ -369,23 +364,7 @@ export class EventHandlers {
         instance.reconnectTimeout = setTimeout(async () => {
           if (instance.shouldBeConnected && instance.reconnectionAttempts < 5) {
             instance.reconnectionAttempts++;
-            
-            // Para códigos que precisam de restart, usar recreateInstance
-            if (reason === DisconnectReason.restartRequired || reason === 515) {
-              logger.info(`Iniciando recreação da instância ${connectionId} (tentativa ${instance.reconnectionAttempts})`);
-              // Precisamos acessar o ConnectionManager - vamos usar uma referência
-              try {
-                // Como não temos acesso direto ao ConnectionManager aqui,
-                // vamos emitir um evento customizado ou usar uma callback
-                if ((this as any).connectionManager) {
-                  await (this as any).connectionManager.recreateInstance(connectionId);
-                }
-              } catch (error) {
-                logger.error(`Erro na recreação da instância ${connectionId}:`, error);
-              }
-            } else {
-              logger.info(`Iniciando tentativa de reconexão ${instance.reconnectionAttempts} para ${connectionId}`);
-            }
+            logger.info(`Iniciando tentativa de reconexão ${instance.reconnectionAttempts} para ${connectionId}`);
           } else {
             logger.warn(`Máximo de tentativas de reconexão atingido para ${connectionId}, removendo instância`);
             instance.shouldBeConnected = false;
@@ -425,47 +404,6 @@ export class EventHandlers {
         instance.reconnectionAttempts = 0;
         instance.lastActivity = new Date();
       }
-    }
-  }
-
-  private async performAutoRestart(connectionId: string, instance: InstanceData): Promise<void> {
-    try {
-      logger.info(`Iniciando restart automático para ${connectionId}...`);
-      
-      // Marcar que deve ser reconectada
-      instance.shouldBeConnected = true;
-      
-      // Aguardar um pouco antes de recriar
-      setTimeout(async () => {
-        try {
-          if (instance.shouldBeConnected && (this as any).connectionManager) {
-            logger.info(`Executando restart automático para ${connectionId}`);
-            
-            // Chamar o método de restart do ConnectionManager
-            const connectionManager = (this as any).connectionManager;
-            await connectionManager.restartConnection(connectionId);
-            
-            logger.info(`Restart automático concluído para ${connectionId}`);
-          }
-        } catch (error) {
-          logger.error(`Erro no restart automático para ${connectionId}:`, error);
-          
-          // Se falhar, tentar novamente em 10 segundos
-          setTimeout(async () => {
-            try {
-              if (instance.shouldBeConnected && (this as any).connectionManager) {
-                logger.info(`Tentativa adicional de restart para ${connectionId}`);
-                const connectionManager = (this as any).connectionManager;
-                await connectionManager.restartConnection(connectionId);
-              }
-            } catch (retryError) {
-              logger.error(`Falha na tentativa adicional de restart para ${connectionId}:`, retryError);
-            }
-          }, 10000);
-        }
-      }, 2000);
-    } catch (error) {
-      logger.error(`Erro ao iniciar restart automático para ${connectionId}:`, error);
     }
   }
 }
