@@ -91,11 +91,15 @@ export class EventHandlers {
 
       sock.ev.on('messages.delete', async (deletions) => {
         try {
-          for (const deletion of deletions.keys) {
+          if ('keys' in deletions) {
+            for (const deletion of deletions.keys) {
+              logger.info(`Mensagem deletada em ${connectionId}: ${deletion.id} de ${deletion.remoteJid}`);
+              
+              // Aqui você pode marcar a mensagem como deletada no banco de dados
+              // await markMessageAsDeleted(deletion.id);
+            }
+          } else {
             logger.info(`Mensagem deletada em ${connectionId}: ${deletion.id} de ${deletion.remoteJid}`);
-            
-            // Aqui você pode marcar a mensagem como deletada no banco de dados
-            // await markMessageAsDeleted(deletion.id);
           }
         } catch (error) {
           logger.error(`Erro no evento messages.delete para ${connectionId}:`, error);
@@ -238,7 +242,11 @@ export class EventHandlers {
 
       sock.ev.on('group-participants.update', async (updates) => {
         try {
-          for (const update of updates) {
+          if (Array.isArray(updates)) {
+            for (const update of updates) {
+              logger.info(`Participantes do grupo ${update.id} ${update.action} em ${connectionId}: ${update.participants.length} usuários`);
+            }
+          } else {
             logger.info(`Participantes do grupo ${update.id} ${update.action} em ${connectionId}: ${update.participants.length} usuários`);
           }
         } catch (error) {

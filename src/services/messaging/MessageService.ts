@@ -81,7 +81,7 @@ export class MessageService {
   /**
    * Baixa mídia de uma mensagem
    */
-  async downloadMedia(connectionId: string, message: any): Promise<Buffer | null> {
+  async downloadMedia(connectionId: string, messageInfo: any): Promise<Buffer | null> {
     const instance = this.instances.get(connectionId);
     
     if (!instance || instance.status !== 'connected') {
@@ -89,11 +89,13 @@ export class MessageService {
     }
 
     try {
-      if (!MessageHandler.hasMedia(message)) {
+      const message = messageInfo.message;
+      if (!message || !MessageHandler.hasMedia(message)) {
         throw new Error('Mensagem não contém mídia');
       }
 
-      const buffer = await instance.socket.downloadMediaMessage(message);
+      // Usar downloadMediaMessage do Baileys
+      const buffer = await (instance.socket as any).downloadMediaMessage(messageInfo);
       logger.info(`Mídia baixada de ${connectionId}: ${buffer?.length || 0} bytes`);
       
       return buffer || null;

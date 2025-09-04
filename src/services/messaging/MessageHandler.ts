@@ -40,11 +40,11 @@ export class MessageHandler {
         content: '',
         isFromMe: key.fromMe || false,
         isGroup: key.remoteJid?.endsWith('@g.us') || false,
-        participant: key.participant
+        participant: key.participant || undefined
       };
 
       if (processedMessage.isGroup) {
-        processedMessage.groupId = key.remoteJid;
+        processedMessage.groupId = key.remoteJid || undefined;
         processedMessage.from = key.participant || '';
       }
 
@@ -60,16 +60,19 @@ export class MessageHandler {
         
         // Processar mensagem citada
         if (message.extendedTextMessage.contextInfo?.quotedMessage) {
-          processedMessage.quotedMessage = this.processQuotedMessage(
+          const quotedMsg = this.processQuotedMessage(
             message.extendedTextMessage.contextInfo
           );
+          if (quotedMsg) {
+            processedMessage.quotedMessage = quotedMsg;
+          }
         }
       } else if (message.imageMessage) {
         // Mensagem de imagem
         processedMessage.type = 'image';
         processedMessage.content = 'Imagem';
         processedMessage.caption = message.imageMessage.caption || '';
-        processedMessage.mediaUrl = message.imageMessage.url;
+        processedMessage.mediaUrl = message.imageMessage.url || undefined;
         processedMessage.metadata = {
           mimetype: message.imageMessage.mimetype,
           fileLength: message.imageMessage.fileLength,
@@ -81,7 +84,7 @@ export class MessageHandler {
         processedMessage.type = 'video';
         processedMessage.content = 'Vídeo';
         processedMessage.caption = message.videoMessage.caption || '';
-        processedMessage.mediaUrl = message.videoMessage.url;
+        processedMessage.mediaUrl = message.videoMessage.url || undefined;
         processedMessage.metadata = {
           mimetype: message.videoMessage.mimetype,
           fileLength: message.videoMessage.fileLength,
@@ -91,7 +94,7 @@ export class MessageHandler {
         // Mensagem de áudio
         processedMessage.type = 'audio';
         processedMessage.content = message.audioMessage.ptt ? 'Áudio (PTT)' : 'Áudio';
-        processedMessage.mediaUrl = message.audioMessage.url;
+        processedMessage.mediaUrl = message.audioMessage.url || undefined;
         processedMessage.metadata = {
           mimetype: message.audioMessage.mimetype,
           fileLength: message.audioMessage.fileLength,
@@ -102,7 +105,7 @@ export class MessageHandler {
         // Mensagem de documento
         processedMessage.type = 'document';
         processedMessage.content = `Documento: ${message.documentMessage.fileName || 'Sem nome'}`;
-        processedMessage.mediaUrl = message.documentMessage.url;
+        processedMessage.mediaUrl = message.documentMessage.url || undefined;
         processedMessage.metadata = {
           mimetype: message.documentMessage.mimetype,
           fileLength: message.documentMessage.fileLength,
@@ -112,7 +115,7 @@ export class MessageHandler {
         // Mensagem de sticker
         processedMessage.type = 'sticker';
         processedMessage.content = 'Sticker';
-        processedMessage.mediaUrl = message.stickerMessage.url;
+        processedMessage.mediaUrl = message.stickerMessage.url || undefined;
         processedMessage.metadata = {
           mimetype: message.stickerMessage.mimetype,
           fileLength: message.stickerMessage.fileLength,
