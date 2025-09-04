@@ -196,15 +196,110 @@ export class ConnectionManager {
 
     logger.info(`Recriando instância ${connectionId}...`);
     
+    // Salvar dados da instância antes do cleanup
+    const pairingMethod = instance.pairingMethod;
+    const phoneNumber = instance.phoneNumber;
+    
     // Cleanup da instância atual
     await this.cleanup(connectionId);
-    
+
     // Recriar com os mesmos parâmetros
     try {
-      await this.createConnection(instance.pairingMethod, instance.phoneNumber);
+      await this.createConnection(pairingMethod, phoneNumber);
       logger.info(`Instância ${connectionId} recriada com sucesso`);
     } catch (error) {
       logger.error(`Erro ao recriar instância ${connectionId}:`, error);
+    }
+  }
+
+  async restartConnection(connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+    const instance = this.instances.get(connectionId);
+    
+    if (!instance) {
+      throw new Error('Conexão não encontrada');
+    }
+
+    logger.info(`Reiniciando conexão ${connectionId}...`);
+    
+    // Salvar dados da instância
+    const pairingMethod = instance.pairingMethod;
+    const phoneNumber = instance.phoneNumber;
+    
+    // Remover instância atual
+    await this.removeConnection(connectionId);
+    
+    // Criar nova conexão com mesmo ID
+    const authPath = path.join(this.AUTH_DIR, connectionId);
+    
+    if (!fs.existsSync(authPath)) {
+      fs.mkdirSync(authPath, { recursive: true });
+    }
+
+    try {
+      const { state, saveCreds } = await useMultiFileAuthState(authPath);
+
+      const sock = makeWASocket({
+        auth: state,
+        logger: P({ level: 'silent' }),
+        browser: Browsers.ubuntu("Chrome"),
+        printQRInTerminal: false,
+        markOnlineOnConnect: false,
+        syncFullHistory: false,
+        shouldSyncHistoryMessage: () => true,
+        getMessage: async (key) => {
+          return { conversation: '' };
+        }
+      });
+
+      const instanceData: InstanceData = {
+        instanceId: connectionId,
+        socket: sock,
+        status: 'connecting',
+        reconnectionAttempts: 0,
+        shouldBeConnected: true,
+        createdAt: new Date(),
+        pairingMethod,
+        phoneNumber
+      };
+
+      this.instances.set(connectionId, instanceData);
+      this.eventHandlers.setupSocketEvents(sock, connectionId, saveCreds);
+
+      // Aguardar geração do QR code ou código de emparelhamento
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (pairingMethod === 'qr' && instanceData.qr) {
+          break;
+        }
+        
+        if (pairingMethod === 'code' && instanceData.pairingCode) {
+          break;
+        }
+        
+        attempts++;
+      }
+
+      logger.info(`Conexão ${connectionId} reiniciada com sucesso`);
+
+      const result: { connectionId: string; qrCode?: string; pairingCode?: string } = {
+        connectionId
+      };
+      
+      if (pairingMethod === 'qr') {
+        result.qrCode = instanceData.qr;
+      } else {
+        result.pairingCode = instanceData.pairingCode;
+      }
+      
+      return result;
+    } catch (error) {
+      logger.error(`Erro ao reiniciar conexão ${connectionId}:`, error);
+      await this.cleanup(connectionId);
+      throw error;
     }
   }
 

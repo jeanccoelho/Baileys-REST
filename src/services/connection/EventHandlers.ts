@@ -333,14 +333,9 @@ export class EventHandlers {
       // Seguir documentação: tratar restartRequired especificamente
       if (reason === DisconnectReason.restartRequired) {
         logger.info(`Restart necessário para ${connectionId}, criando nova conexão...`);
-        // Marcar para recriação automática
-        instance.shouldBeConnected = true;
-        setTimeout(async () => {
-          if (instance.shouldBeConnected) {
-            // Aqui seria necessário chamar o método de recriação do ConnectionManager
-            logger.info(`Tentando recriar instância ${connectionId} após restart`);
-          }
-        }, 2000);
+        // Marcar para recriação automática mais rápida
+        instance.shouldBeConnected = false; // Evitar reconexões automáticas
+        logger.info(`Use POST /api/connection/${connectionId}/restart para reiniciar a instância`);
         return;
       }
       

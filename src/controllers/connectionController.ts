@@ -3,6 +3,39 @@ import whatsappService from '../services/whatsappService';
 import { ApiResponse, ConnectionRequest, ValidateConnectionRequest } from '../types/types';
 import logger from '../utils/logger';
 
+export const restartConnection = async (
+  req: Request<{ connectionId: string }>,
+  res: Response<ApiResponse>
+): Promise<void> => {
+  try {
+    const { connectionId } = req.params;
+    
+    if (!connectionId) {
+      res.status(400).json({
+        success: false,
+        error: 'Connection ID is required',
+        message: 'Missing connection ID parameter'
+      });
+      return;
+    }
+
+    const result = await whatsappService.restartConnection(connectionId);
+    
+    res.json({
+      success: true,
+      data: result,
+      message: 'Connection restarted successfully'
+    });
+  } catch (error) {
+    logger.error('Error restarting connection:', error);
+    res.status(500).json({
+      success: false,
+      error: (error as Error).message,
+      message: 'Failed to restart connection'
+    });
+  }
+};
+
 export const createConnection = async (
   req: Request<{}, ApiResponse, ConnectionRequest>,
   res: Response<ApiResponse>

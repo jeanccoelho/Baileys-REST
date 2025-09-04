@@ -47,6 +47,10 @@ class WhatsAppService {
     return this.connectionManager.getConnection(connectionId);
   }
 
+  async restartConnection(connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+    return this.connectionManager.restartConnection(connectionId);
+  }
+
   async restoreInstances(): Promise<void> {
     return this.connectionManager.restoreInstances();
   }

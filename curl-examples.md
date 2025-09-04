@@ -100,6 +100,23 @@ curl -X GET http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI
 curl -X DELETE http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI
 ```
 
+### 4.1. Reiniciar Conexão Específica
+```bash
+curl -X POST http://localhost:3000/api/connection/SEU_CONNECTION_ID_AQUI/restart
+```
+
+**Resposta esperada:**
+```json
+{
+  "success": true,
+  "data": {
+    "connectionId": "uuid-v4-aqui",
+    "qrCode": "data:image/png;base64,..." // ou pairingCode se for método code
+  },
+  "message": "Connection restarted successfully"
+}
+```
+
 ## 💬 Endpoints de Mensagens
 
 ### 5. Enviar Mensagem de Texto

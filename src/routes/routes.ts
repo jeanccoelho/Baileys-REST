@@ -15,7 +15,8 @@ import {
   validateConnection,
   removeConnection,
   getAllConnections,
-  getConnectionStatus
+  getConnectionStatus,
+  restartConnection
 } from '../controllers/connectionController';
 import { asyncHandler } from '../middleware/errorHandler';
 
@@ -80,6 +81,7 @@ router.get('/groups/:connectionId', asyncHandler(getGroups));
 // Rotas de conexão
 router.post('/connection', asyncHandler(createConnection));
 router.put('/connection', asyncHandler(validateConnection));
+router.post('/connection/:connectionId/restart', asyncHandler(restartConnection));
 router.delete('/connection/:connectionId', asyncHandler(removeConnection));
 router.get('/connection', asyncHandler(getAllConnections));
 router.get('/connection/:connectionId', asyncHandler(getConnectionStatus));
