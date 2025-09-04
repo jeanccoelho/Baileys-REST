@@ -64,9 +64,8 @@ export class ConnectionManager {
       const sock = makeWASocket({
         printQRInTerminal: false,
         auth: {
-          ...state,
           creds: state.creds,
-          keys: makeCacheableSignalKeyStore(state.keys, logger as any)
+          keys: state.keys
         },
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
@@ -276,9 +275,8 @@ export class ConnectionManager {
       const sock = makeWASocket({
         printQRInTerminal: false,
         auth: {
-          ...state,
           creds: state.creds,
-          keys: makeCacheableSignalKeyStore(state.keys, logger as any)
+          keys: state.keys
         },
         browser: Browsers.ubuntu("Chrome"),
         syncFullHistory: false,
