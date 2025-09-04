@@ -283,7 +283,7 @@ export class EventHandlers {
         if (instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
           try {
             // Verificar se o socket está pronto antes de solicitar código
-            if (sock.ws?.readyState !== 1) {
+            if ((sock.ws as any)?.readyState !== 1) {
               logger.warn(`Socket não está pronto para ${connectionId}, aguardando...`);
               return;
             }
