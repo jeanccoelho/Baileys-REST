@@ -597,7 +597,8 @@ class WhatsAppService {
         status: 'connecting',
         reconnectionAttempts: 0,
         shouldBeConnected: true,
-        createdAt: new Date()
+        createdAt: new Date(),
+        pairingMethod: 'qr' // Padrão para instâncias restauradas
       };
 
       this.instances.set(instanceId, instanceData);
