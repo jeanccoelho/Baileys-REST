@@ -9,6 +9,16 @@ export const restartConnection = async (
 ): Promise<void> => {
   try {
     const { connectionId } = req.params;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId) {
       res.status(400).json({
@@ -19,7 +29,7 @@ export const restartConnection = async (
       return;
     }
 
-    const result = await whatsappService.restartConnection(connectionId);
+    const result = await whatsappService.restartConnection(userId, connectionId);
     
     res.json({
       success: true,
@@ -42,6 +52,16 @@ export const createConnection = async (
 ): Promise<void> => {
   try {
     const { pairingMethod = 'qr', phoneNumber } = req.body;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (pairingMethod === 'code') {
       if (!phoneNumber) {
@@ -54,7 +74,7 @@ export const createConnection = async (
       }
     }
     
-    const result = await whatsappService.createConnection(pairingMethod, phoneNumber);
+    const result = await whatsappService.createConnection(userId, pairingMethod, phoneNumber);
     
     const responseData: any = {
       connectionId: result.connectionId,
@@ -94,6 +114,16 @@ export const validateConnection = async (
 ): Promise<void> => {
   try {
     const { connectionId, code } = req.body;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId || !code) {
       res.status(400).json({
@@ -104,7 +134,7 @@ export const validateConnection = async (
       return;
     }
 
-    const isValid = await whatsappService.validateConnection(connectionId, code);
+    const isValid = await whatsappService.validateConnection(userId, connectionId, code);
     
     res.json({
       success: true,
@@ -127,6 +157,16 @@ export const removeConnection = async (
 ): Promise<void> => {
   try {
     const { connectionId } = req.params;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId) {
       res.status(400).json({
@@ -137,7 +177,7 @@ export const removeConnection = async (
       return;
     }
 
-    await whatsappService.removeConnection(connectionId);
+    await whatsappService.removeConnection(userId, connectionId);
     
     res.json({
       success: true,
@@ -158,13 +198,24 @@ export const getAllConnections = async (
   res: Response<ApiResponse>
 ): Promise<void> => {
   try {
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
+    
     // Limpar instâncias desconectadas antes de retornar a lista
     const connectionManager = (whatsappService as any).connectionManager;
     if (connectionManager && typeof connectionManager.cleanupDisconnectedInstances === 'function') {
       await connectionManager.cleanupDisconnectedInstances();
     }
     
-    const connections = whatsappService.getAllConnections();
+    const connections = whatsappService.getAllConnections(userId);
     
     res.json({
       success: true,
@@ -187,6 +238,16 @@ export const getConnectionStatus = async (
 ): Promise<void> => {
   try {
     const { connectionId } = req.params;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId) {
       res.status(400).json({
@@ -197,7 +258,7 @@ export const getConnectionStatus = async (
       return;
     }
 
-    const connection = whatsappService.getConnection(connectionId);
+    const connection = whatsappService.getConnection(userId, connectionId);
     
     if (!connection) {
       res.status(404).json({

@@ -9,6 +9,16 @@ export const sendMessage = async (
 ): Promise<void> => {
   try {
     const { connectionId, to, message } = req.body;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId || !to || !message) {
       res.status(400).json({
@@ -19,7 +29,7 @@ export const sendMessage = async (
       return;
     }
 
-    const result = await whatsappService.sendMessage(connectionId, to, message);
+    const result = await whatsappService.sendMessage(userId, connectionId, to, message);
     
     res.json({
       success: true,
@@ -46,6 +56,16 @@ export const sendFile = async (
   try {
     const { connectionId, to, caption } = req.body;
     const file = req.file;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     // Log para debug
     logger.info('Dados recebidos no sendFile:', {
@@ -68,6 +88,7 @@ export const sendFile = async (
     }
 
     const result = await whatsappService.sendFile(
+      userId,
       connectionId,
       to,
       file.buffer,
@@ -102,6 +123,16 @@ export const validateNumber = async (
 ): Promise<void> => {
   try {
     const { connectionId, number } = req.body;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId || !number) {
       res.status(400).json({
@@ -112,7 +143,7 @@ export const validateNumber = async (
       return;
     }
 
-    const validatedNumber = await whatsappService.validateNumber(connectionId, number);
+    const validatedNumber = await whatsappService.validateNumber(userId, connectionId, number);
     
     res.json({
       success: true,

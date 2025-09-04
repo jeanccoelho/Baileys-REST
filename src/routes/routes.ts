@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
 import authRoutes from './authRoutes';
+import { authenticate } from '../middleware/authMiddleware';
 import {
   sendMessage,
   sendFile,
@@ -41,24 +42,24 @@ const uploadMiddleware = upload.single('file');
 // Rotas de autenticação
 router.use('/auth', authRoutes);
 
-// Rotas de mensagens
-router.post('/send-message', asyncHandler(sendMessage));
+// Rotas de mensagens (protegidas)
+router.post('/send-message', authenticate, asyncHandler(sendMessage));
 
 // Rota de envio de arquivo com middleware tipado
-router.post('/send-file', uploadMiddleware as any, asyncHandler(sendFile));
+router.post('/send-file', authenticate, uploadMiddleware as any, asyncHandler(sendFile));
 
-router.post('/validate-number', asyncHandler(validateNumber));
+router.post('/validate-number', authenticate, asyncHandler(validateNumber));
 
-// Rotas de contatos
-router.get('/contacts/:connectionId', asyncHandler(getContacts));
-router.get('/groups/:connectionId', asyncHandler(getGroups));
+// Rotas de contatos (protegidas)
+router.get('/contacts/:connectionId', authenticate, asyncHandler(getContacts));
+router.get('/groups/:connectionId', authenticate, asyncHandler(getGroups));
 
-// Rotas de conexão
-router.post('/connection', asyncHandler(createConnection));
-router.put('/connection', asyncHandler(validateConnection));
-router.post('/connection/:connectionId/restart', asyncHandler(restartConnection));
-router.delete('/connection/:connectionId', asyncHandler(removeConnection));
-router.get('/connection', asyncHandler(getAllConnections));
-router.get('/connection/:connectionId', asyncHandler(getConnectionStatus));
+// Rotas de conexão (protegidas)
+router.post('/connection', authenticate, asyncHandler(createConnection));
+router.put('/connection', authenticate, asyncHandler(validateConnection));
+router.post('/connection/:connectionId/restart', authenticate, asyncHandler(restartConnection));
+router.delete('/connection/:connectionId', authenticate, asyncHandler(removeConnection));
+router.get('/connection', authenticate, asyncHandler(getAllConnections));
+router.get('/connection/:connectionId', authenticate, asyncHandler(getConnectionStatus));
 
 export default router;

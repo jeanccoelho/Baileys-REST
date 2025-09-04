@@ -27,28 +27,28 @@ class WhatsAppService {
   }
 
   // Métodos de conexão
-  async createConnection(pairingMethod: 'qr' | 'code' = 'qr', phoneNumber?: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
-    return this.connectionManager.createConnection(pairingMethod, phoneNumber);
+  async createConnection(userId: string, pairingMethod: 'qr' | 'code' = 'qr', phoneNumber?: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+    return this.connectionManager.createConnection(userId, pairingMethod, phoneNumber);
   }
 
-  async validateConnection(connectionId: string, code: string): Promise<boolean> {
-    return this.connectionManager.validateConnection(connectionId, code);
+  async validateConnection(userId: string, connectionId: string, code: string): Promise<boolean> {
+    return this.connectionManager.validateConnection(userId, connectionId, code);
   }
 
-  async removeConnection(connectionId: string): Promise<void> {
-    return this.connectionManager.removeConnection(connectionId);
+  async removeConnection(userId: string, connectionId: string): Promise<void> {
+    return this.connectionManager.removeConnection(userId, connectionId);
   }
 
-  getAllConnections(): WhatsAppConnection[] {
-    return this.connectionManager.getAllConnections();
+  getAllConnections(userId?: string): WhatsAppConnection[] {
+    return this.connectionManager.getAllConnections(userId);
   }
 
-  getConnection(connectionId: string): WhatsAppConnection | undefined {
-    return this.connectionManager.getConnection(connectionId);
+  getConnection(userId: string, connectionId: string): WhatsAppConnection | undefined {
+    return this.connectionManager.getConnection(userId, connectionId);
   }
 
-  async restartConnection(connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
-    return this.connectionManager.restartConnection(connectionId);
+  async restartConnection(userId: string, connectionId: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
+    return this.connectionManager.restartConnection(userId, connectionId);
   }
 
   async restoreInstances(): Promise<void> {
@@ -56,11 +56,12 @@ class WhatsAppService {
   }
 
   // Métodos de mensagem
-  async sendMessage(connectionId: string, to: string, message: string): Promise<{ success: boolean; wa_id?: string; message?: string }> {
-    return this.messageService.sendMessage(connectionId, to, message);
+  async sendMessage(userId: string, connectionId: string, to: string, message: string): Promise<{ success: boolean; wa_id?: string; message?: string }> {
+    return this.messageService.sendMessage(userId, connectionId, to, message);
   }
 
   async sendFile(
+    userId: string,
     connectionId: string, 
     to: string, 
     fileBuffer: Buffer, 
@@ -68,20 +69,20 @@ class WhatsAppService {
     mimetype: string, 
     caption?: string
   ): Promise<{ success: boolean; wa_id?: string; message?: string }> {
-    return this.messageService.sendFile(connectionId, to, fileBuffer, fileName, mimetype, caption);
+    return this.messageService.sendFile(userId, connectionId, to, fileBuffer, fileName, mimetype, caption);
   }
 
   // Métodos de contatos
-  async getContacts(connectionId: string): Promise<ContactType[]> {
-    return this.contactService.getContacts(connectionId);
+  async getContacts(userId: string, connectionId: string): Promise<ContactType[]> {
+    return this.contactService.getContacts(userId, connectionId);
   }
 
-  async getGroups(connectionId: string): Promise<Group[]> {
-    return this.contactService.getGroups(connectionId);
+  async getGroups(userId: string, connectionId: string): Promise<Group[]> {
+    return this.contactService.getGroups(userId, connectionId);
   }
 
-  async validateNumber(connectionId: string, number: string): Promise<ValidatedNumber> {
-    return this.contactService.validateNumber(connectionId, number);
+  async validateNumber(userId: string, connectionId: string, number: string): Promise<ValidatedNumber> {
+    return this.contactService.validateNumber(userId, connectionId, number);
   }
 }
 

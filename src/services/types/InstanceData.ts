@@ -2,6 +2,7 @@ import { WASocket } from '@whiskeysockets/baileys';
 
 export interface InstanceData {
   instanceId: string;
+  userId: string;
   socket: WASocket;
   status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending' | 'code_pending';
   qr?: string;

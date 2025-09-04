@@ -5,11 +5,11 @@ import { InstanceData } from '../types/InstanceData';
 export class ContactService {
   constructor(private instances: Map<string, InstanceData>) {}
 
-  async getContacts(connectionId: string): Promise<ContactType[]> {
+  async getContacts(userId: string, connectionId: string): Promise<ContactType[]> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.status !== 'connected') {
-      throw new Error('Conexão não encontrada ou não conectada');
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
     }
 
     try {
@@ -25,11 +25,11 @@ export class ContactService {
     }
   }
 
-  async getGroups(connectionId: string): Promise<Group[]> {
+  async getGroups(userId: string, connectionId: string): Promise<Group[]> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.status !== 'connected') {
-      throw new Error('Conexão não encontrada ou não conectada');
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
     }
 
     try {
@@ -58,11 +58,11 @@ export class ContactService {
     }
   }
 
-  async validateNumber(connectionId: string, number: string): Promise<ValidatedNumber> {
+  async validateNumber(userId: string, connectionId: string, number: string): Promise<ValidatedNumber> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.status !== 'connected') {
-      throw new Error('Conexão não encontrada ou não conectada');
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
     }
 
     try {
@@ -178,9 +178,9 @@ export class ContactService {
   /**
    * Valida e retorna o JID correto para um número
    */
-  async getValidJid(connectionId: string, number: string): Promise<string | null> {
+  async getValidJid(userId: string, connectionId: string, number: string): Promise<string | null> {
     try {
-      const validation = await this.validateNumber(connectionId, number);
+      const validation = await this.validateNumber(userId, connectionId, number);
       return validation.exists ? validation.jid || null : null;
     } catch (error) {
       logger.error(`Erro ao obter JID válido para ${number}:`, error);

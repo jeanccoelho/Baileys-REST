@@ -1,5 +1,6 @@
 export interface WhatsAppConnection {
   id: string;
+  userId: string;
   qr?: string;
   status: 'connecting' | 'connected' | 'disconnected' | 'qr_pending' | 'code_pending';
   phoneNumber?: string;

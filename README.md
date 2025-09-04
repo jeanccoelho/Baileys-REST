@@ -137,10 +137,22 @@ Authorization: Bearer jwt-token-aqui
 
 ## 📱 Endpoints do WhatsApp
 
+**⚠️ IMPORTANTE: Todas as rotas do WhatsApp agora requerem autenticação JWT!**
+
+**Headers obrigatórios:**
+```
+Authorization: Bearer jwt-token-aqui
+```
+
 ### Conexões
 
 #### `POST /api/connection`
-Cria uma nova conexão WhatsApp e retorna QR Code para escaneamento.
+Cria uma nova conexão WhatsApp e retorna QR Code para escaneamento (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 **Resposta:**
 ```json
@@ -154,7 +166,12 @@ Cria uma nova conexão WhatsApp e retorna QR Code para escaneamento.
 ```
 
 #### `PUT /api/connection`
-Valida uma conexão usando código de emparelhamento.
+Valida uma conexão usando código de emparelhamento (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 **Body:**
 ```json
@@ -165,15 +182,30 @@ Valida uma conexão usando código de emparelhamento.
 ```
 
 #### `DELETE /api/connection/:connectionId`
-Remove uma conexão específica.
+Remove uma conexão específica (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 #### `GET /api/connection`
-Lista todas as conexões ativas.
+Lista todas as conexões ativas do usuário autenticado (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 ### Mensagens
 
 #### `POST /api/send-message`
-Envia mensagem de texto.
+Envia mensagem de texto (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 **Body:**
 ```json
@@ -185,7 +217,12 @@ Envia mensagem de texto.
 ```
 
 #### `POST /api/send-file`
-Envia arquivo com caption opcional.
+Envia arquivo com caption opcional (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 **Form Data:**
 - `connectionId`: ID da conexão
@@ -194,7 +231,12 @@ Envia arquivo com caption opcional.
 - `file`: Arquivo a ser enviado
 
 #### `POST /api/validate-number`
-Valida se um número está no WhatsApp e retorna informações disponíveis.
+Valida se um número está no WhatsApp e retorna informações disponíveis (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 **Body:**
 ```json
@@ -221,10 +263,20 @@ Valida se um número está no WhatsApp e retorna informações disponíveis.
 ### Contatos e Grupos
 
 #### `GET /api/contacts/:connectionId`
-Lista todos os contatos da conexão.
+Lista todos os contatos da conexão (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 #### `GET /api/groups/:connectionId`
-Lista todos os grupos da conexão.
+Lista todos os grupos da conexão (requer autenticação).
+
+**Headers:**
+```
+Authorization: Bearer jwt-token-aqui
+```
 
 ## Estrutura do Projeto
 
@@ -248,15 +300,17 @@ Os logs são salvos em:
 
 ## Observações Importantes
 
+1. **Autenticação Obrigatória**: Todas as rotas do WhatsApp agora requerem JWT token
+2. **Isolamento por Usuário**: Cada usuário só acessa suas próprias conexões
 1. **Sessões**: Cada conexão cria uma sessão independente salva em `auth_sessions/`
-2. **Autenticação**: Sistema JWT com tokens que expiram em 7 dias
-3. **Senhas**: Validação rigorosa (maiúscula, minúscula, número, 6+ caracteres)
-4. **Email**: Sistema de recuperação de senha via SMTP
-5. **Arquivos**: Suporte para envio de imagens, vídeos, áudios e documentos
-6. **QR Code**: Gerado automaticamente como Data URL
-7. **Múltiplas Conexões**: Suporte para múltiplas instâncias WhatsApp simultâneas
-8. **Tratamento de Erros**: Sistema robusto de logs e tratamento de erros
-9. **TypeScript**: Tipagem completa para maior segurança
+3. **Autenticação**: Sistema JWT com tokens que expiram em 7 dias
+4. **Senhas**: Validação rigorosa (maiúscula, minúscula, número, 6+ caracteres)
+5. **Email**: Sistema de recuperação de senha via SMTP
+6. **Arquivos**: Suporte para envio de imagens, vídeos, áudios e documentos
+7. **QR Code**: Gerado automaticamente como Data URL
+8. **Múltiplas Conexões**: Suporte para múltiplas instâncias WhatsApp simultâneas
+9. **Tratamento de Erros**: Sistema robusto de logs e tratamento de erros
+10. **TypeScript**: Tipagem completa para maior segurança
 
 ## 🔒 Segurança
 

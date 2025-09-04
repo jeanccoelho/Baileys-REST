@@ -10,16 +10,16 @@ export class MessageService {
     private contactService: ContactService
   ) {}
 
-  async sendMessage(connectionId: string, to: string, message: string): Promise<{ success: boolean; wa_id?: string; message?: string }> {
+  async sendMessage(userId: string, connectionId: string, to: string, message: string): Promise<{ success: boolean; wa_id?: string; message?: string }> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.status !== 'connected') {
-      throw new Error('Conexão não encontrada ou não conectada');
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
     }
 
     try {
       // Validar número e obter JID correto
-      const validJid = await this.contactService.getValidJid(connectionId, to);
+      const validJid = await this.contactService.getValidJid(userId, connectionId, to);
       
       if (!validJid) {
         throw new Error(`Número ${to} não está no WhatsApp ou é inválido`);
@@ -50,6 +50,7 @@ export class MessageService {
   }
 
   async sendFile(
+    userId: string,
     connectionId: string, 
     to: string, 
     fileBuffer: Buffer, 
@@ -59,13 +60,13 @@ export class MessageService {
   ): Promise<{ success: boolean; wa_id?: string; message?: string }> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.status !== 'connected') {
-      throw new Error('Conexão não encontrada ou não conectada');
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
     }
 
     try {
       // Validar número e obter JID correto
-      const validJid = await this.contactService.getValidJid(connectionId, to);
+      const validJid = await this.contactService.getValidJid(userId, connectionId, to);
       
       if (!validJid) {
         throw new Error(`Número ${to} não está no WhatsApp ou é inválido`);
@@ -107,11 +108,11 @@ export class MessageService {
   /**
    * Baixa mídia de uma mensagem
    */
-  async downloadMedia(connectionId: string, messageInfo: any): Promise<Buffer | null> {
+  async downloadMedia(userId: string, connectionId: string, messageInfo: any): Promise<Buffer | null> {
     const instance = this.instances.get(connectionId);
     
-    if (!instance || instance.status !== 'connected') {
-      throw new Error('Conexão não encontrada ou não conectada');
+    if (!instance || instance.status !== 'connected' || instance.userId !== userId) {
+      throw new Error('Conexão não encontrada, não conectada ou não autorizada');
     }
 
     try {

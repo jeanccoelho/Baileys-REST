@@ -9,6 +9,16 @@ export const getContacts = async (
 ): Promise<void> => {
   try {
     const { connectionId } = req.params;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId) {
       res.status(400).json({
@@ -19,7 +29,7 @@ export const getContacts = async (
       return;
     }
 
-    const contacts = await whatsappService.getContacts(connectionId);
+    const contacts = await whatsappService.getContacts(userId, connectionId);
     
     res.json({
       success: true,
@@ -42,6 +52,16 @@ export const getGroups = async (
 ): Promise<void> => {
   try {
     const { connectionId } = req.params;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'User not authenticated',
+        message: 'JWT token required'
+      });
+      return;
+    }
     
     if (!connectionId) {
       res.status(400).json({
@@ -52,7 +72,7 @@ export const getGroups = async (
       return;
     }
 
-    const groups = await whatsappService.getGroups(connectionId);
+    const groups = await whatsappService.getGroups(userId, connectionId);
     
     res.json({
       success: true,
