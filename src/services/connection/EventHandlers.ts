@@ -282,14 +282,20 @@ export class EventHandlers {
       if ((connection === 'connecting' || qr) && instance) {
         if (instance.pairingMethod === 'code' && instance.phoneNumber && !instance.pairingCode) {
           try {
+            // Verificar se o socket está pronto antes de solicitar código
+            if (sock.ws?.readyState !== 1) {
+              logger.warn(`Socket não está pronto para ${connectionId}, aguardando...`);
+              return;
+            }
+            
             const code = await sock.requestPairingCode(instance.phoneNumber);
             instance.pairingCode = code;
             instance.status = 'code_pending';
             logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
           } catch (error) {
             logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
-            instance.pairingMethod = 'qr';
-            instance.status = 'qr_pending';
+            // Não alterar para QR automaticamente, manter o método escolhido
+            instance.status = 'disconnected';
           }
         }
       }

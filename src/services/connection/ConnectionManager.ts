@@ -90,10 +90,10 @@ export class ConnectionManager {
 
       // Aguardar geração do QR code ou código de emparelhamento
       let attempts = 0;
-      const maxAttempts = 15;
+      const maxAttempts = 10; // Reduzir tentativas para ser mais rápido
       
       while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500)); // Verificar mais frequentemente
         
         if (pairingMethod === 'qr' && instanceData.qr) {
           break;
@@ -104,6 +104,13 @@ export class ConnectionManager {
         }
         
         attempts++;
+      }
+
+      // Log do resultado
+      if (pairingMethod === 'qr') {
+        logger.info(`QR Code ${instanceData.qr ? 'gerado' : 'pendente'} para ${connectionId}`);
+      } else {
+        logger.info(`Código de emparelhamento ${instanceData.pairingCode ? 'gerado' : 'pendente'} para ${connectionId}`);
       }
 
       const result: { connectionId: string; qrCode?: string; pairingCode?: string } = {

@@ -25,7 +25,7 @@ export const createConnection = async (
     
     if (pairingMethod === 'qr' && !result.qrCode) {
       // Aguardar um pouco mais e tentar novamente
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       const connection = whatsappService.getConnection(result.connectionId);
       
       res.status(201).json({
@@ -34,7 +34,7 @@ export const createConnection = async (
           connectionId: result.connectionId,
           pairingMethod,
           qrCode: connection?.qr || null,
-          message: connection?.qr ? 'Scan the QR code with your WhatsApp to connect' : 'QR code is being generated, please check status'
+          message: connection?.qr ? 'Escaneie o QR code com seu WhatsApp para conectar' : 'QR code sendo gerado, verifique o status em alguns segundos'
         },
         message: 'Connection created successfully'
       });
@@ -48,10 +48,12 @@ export const createConnection = async (
     
     if (pairingMethod === 'qr') {
       responseData.qrCode = result.qrCode;
-      responseData.message = 'Scan the QR code with your WhatsApp to connect';
+      responseData.message = 'Escaneie o QR code com seu WhatsApp para conectar';
     } else {
       responseData.pairingCode = result.pairingCode;
-      responseData.message = 'Enter the pairing code in your WhatsApp: Settings > Linked Devices > Link a Device > Link with phone number instead';
+      responseData.message = result.pairingCode 
+        ? `Digite o código ${result.pairingCode} no WhatsApp: Configurações > Aparelhos conectados > Conectar aparelho > Conectar com número de telefone`
+        : 'Código de emparelhamento sendo gerado, verifique o status em alguns segundos';
     }
     
     res.status(201).json({
