@@ -62,10 +62,11 @@ export class ConnectionManager {
       const sock = makeWASocket({
         auth: state,
         logger: P({ level: 'silent' }),
-        browser: Browsers.ubuntu("Chrome"),
+        browser: pairingMethod === 'code' ? Browsers.macOS("Desktop") : Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
         syncFullHistory: false,
+        shouldSyncHistoryMessage: () => true, // Habilitar sync de histórico
         getMessage: async (key) => {
           return { conversation: '' };
         }
@@ -266,6 +267,7 @@ export class ConnectionManager {
         printQRInTerminal: false,
         markOnlineOnConnect: false,
         syncFullHistory: false,
+        shouldSyncHistoryMessage: () => true, // Habilitar sync de histórico
         getMessage: async (key) => {
           return { conversation: '' };
         }
