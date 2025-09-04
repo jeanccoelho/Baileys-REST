@@ -244,7 +244,7 @@ export class ConnectionManager {
         browser: Browsers.ubuntu("Chrome"),
         printQRInTerminal: false,
         markOnlineOnConnect: false,
-        syncFullHistory: false,
+        syncFullHistory: true,
         shouldSyncHistoryMessage: () => true,
         getMessage: async (key) => {
           return { conversation: '' };
