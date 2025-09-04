@@ -62,6 +62,11 @@ class WhatsAppService {
       fs.mkdirSync(authPath, { recursive: true });
     }
 
+    // Baileys não suporta mais código de emparelhamento via Mobile API
+    if (pairingMethod === 'code') {
+      throw new Error('Pairing code method is no longer supported by WhatsApp. Please use QR code method instead.');
+    }
+
     const { state, saveCreds } = await useMultiFileAuthState(authPath);
     const { version } = await fetchLatestBaileysVersion();
 
@@ -72,16 +77,10 @@ class WhatsAppService {
       syncFullHistory: false,
       version,
       logger: logger as any,
-      shouldSyncHistoryMessage: () => false,
-      // Configurar método de emparelhamento
-      ...(pairingMethod === 'code' && phoneNumber ? {
-        mobile: true,
-        generateHighQualityLinkPreview: true
-      } : {})
+      shouldSyncHistoryMessage: () => false
     });
 
     let qrCode: string | undefined;
-    let pairingCode: string | undefined;
 
     const instanceData: InstanceData = {
       instanceId: connectionId,
@@ -100,23 +99,6 @@ class WhatsAppService {
     sock.ev.on('contacts.upsert', async (contacts: Contact[]) => {
       logger.info(`Recebidos ${contacts.length} contatos para ${connectionId}`);
     });
-
-    // Handler para código de emparelhamento
-    if (pairingMethod === 'code' && phoneNumber) {
-      try {
-        // Aguardar um momento para o socket estar pronto
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Solicitar código de emparelhamento
-        const code = await sock.requestPairingCode(phoneNumber);
-        pairingCode = code;
-        instanceData.status = 'code_pending';
-        
-        logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
-      } catch (error) {
-        logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
-      }
-    }
 
     sock.ev.on('connection.update', async (update) => {
       const { connection, qr, lastDisconnect } = update;
@@ -203,13 +185,12 @@ class WhatsAppService {
       }
     });
 
-    // Aguardar geração do QR code ou código de emparelhamento
-    await new Promise(resolve => setTimeout(resolve, pairingMethod === 'code' ? 3000 : 3000));
+    // Aguardar geração do QR code
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     return { 
       connectionId, 
-      qrCode: instanceData.qr,
-      pairingCode
+      qrCode: instanceData.qr
     };
   }
 

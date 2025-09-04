@@ -8,19 +8,19 @@ export const createConnection = async (
   res: Response<ApiResponse>
 ): Promise<void> => {
   try {
-    const { pairingMethod = 'qr', phoneNumber } = req.body;
+    const { pairingMethod = 'qr' } = req.body;
     
-    // Validar parâmetros para código de emparelhamento
-    if (pairingMethod === 'code' && !phoneNumber) {
+    // Apenas QR Code é suportado
+    if (pairingMethod === 'code') {
       res.status(400).json({
         success: false,
-        error: 'Phone number is required for pairing code method',
-        message: 'When using pairing code method, phoneNumber must be provided'
+        error: 'Pairing code method is no longer supported',
+        message: 'Please use QR code method instead. WhatsApp has discontinued support for pairing codes.'
       });
       return;
     }
     
-    const { connectionId, qrCode, pairingCode } = await whatsappService.createConnection(pairingMethod, phoneNumber);
+    const { connectionId, qrCode } = await whatsappService.createConnection(pairingMethod);
     
     if (pairingMethod === 'qr' && !qrCode) {
       // Aguardar um pouco mais e tentar novamente
@@ -45,14 +45,8 @@ export const createConnection = async (
       pairingMethod
     };
     
-    if (pairingMethod === 'qr') {
-      responseData.qrCode = qrCode;
-      responseData.message = 'Scan the QR code with your WhatsApp to connect';
-    } else {
-      responseData.pairingCode = pairingCode;
-      responseData.phoneNumber = phoneNumber;
-      responseData.message = `Enter the pairing code ${pairingCode} in your WhatsApp`;
-    }
+    responseData.qrCode = qrCode;
+    responseData.message = 'Scan the QR code with your WhatsApp to connect';
     
     res.status(201).json({
       success: true,

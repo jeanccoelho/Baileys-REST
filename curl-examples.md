@@ -17,10 +17,8 @@ curl -X GET http://localhost:3000/health
 ### 1. Criar Nova Conexão WhatsApp (QR Code)
 ```bash
 curl -X POST http://localhost:3000/api/connection \
-  -H "Content-Type: application/json"
-  -d '{
-    "pairingMethod": "qr"
-  }'
+  -H "Content-Type: application/json" \
+  -d '{"pairingMethod": "qr"}'
 ```
 
 **Resposta esperada:**
@@ -37,28 +35,18 @@ curl -X POST http://localhost:3000/api/connection \
 }
 ```
 
-### 1.1. Criar Nova Conexão WhatsApp (Código de Emparelhamento)
+### 1.1. ⚠️ Código de Emparelhamento (DESCONTINUADO)
 ```bash
-curl -X POST http://localhost:3000/api/connection \
-  -H "Content-Type: application/json" \
-  -d '{
-    "pairingMethod": "code",
-    "phoneNumber": "5511999999999"
-  }'
+# MÉTODO DESCONTINUADO - WhatsApp removeu suporte
+# Use apenas QR Code
 ```
 
-**Resposta esperada:**
+**⚠️ AVISO:**
 ```json
 {
-  "success": true,
-  "data": {
-    "connectionId": "uuid-v4-aqui",
-    "pairingMethod": "code",
-    "pairingCode": "ABCD-1234",
-    "phoneNumber": "5511999999999",
-    "message": "Enter the pairing code ABCD-1234 in your WhatsApp"
-  },
-  "message": "Connection created successfully"
+  "success": false,
+  "error": "Pairing code method is no longer supported",
+  "message": "Please use QR code method instead. WhatsApp has discontinued support for pairing codes."
 }
 ```
 
