@@ -82,7 +82,7 @@ export class ContactStorageService {
     // Filtro por foto de perfil
     if (filters.hasPicture === true) {
       where.whatsappPicture = {
-        not: { in: [null, ''] }
+        not: { in: ['', null] }
       };
     } else if (filters.hasPicture === false) {
       where.OR = [
