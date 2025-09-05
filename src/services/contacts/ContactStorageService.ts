@@ -109,7 +109,7 @@ export class ContactStorageService {
       select: { phoneNumber: true }
     });
 
-    const existingNumbers = new Set(existingContacts.map(c => c.phoneNumber));
+    const existingNumbers = new Set(existingContacts.map((c: any) => c.phoneNumber));
     
     let imported = 0;
     let skipped = 0;

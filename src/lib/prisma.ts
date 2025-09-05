@@ -18,7 +18,7 @@ prisma.$connect()
   .then(() => {
     logger.info('✅ Conectado ao PostgreSQL com Prisma');
   })
-  .catch((error) => {
+  .catch((error: any) => {
     logger.error('❌ Erro ao conectar ao PostgreSQL:', error);
     process.exit(1);
   });
