@@ -1,3 +1,8 @@
+import dotenv from 'dotenv';
+
+// Carregar variáveis de ambiente do arquivo .env
+dotenv.config();
+
 import app from './app';
 import logger from './utils/logger';
 import whatsappService from './services/whatsappService';
