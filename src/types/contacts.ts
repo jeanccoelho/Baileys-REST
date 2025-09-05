@@ -39,6 +39,11 @@ export interface PaginationMetadata {
   totalPages: number;
   hasNext: boolean;
   hasPrev: boolean;
+  totalWhatsappExists?: number;
+  totalWhatsappNotExists?: number;
+  totalNotValidated?: number;
+  totalBusiness?: number;
+  totalVerified?: number;
 }
 
 export interface PaginatedApiResponse<T = any> {

@@ -49,7 +49,15 @@ export class ContactStorageService {
     page: number = 1, 
     limit: number = 10, 
     filters: ContactFilters = {}
-  ): Promise<{ contacts: Contact[]; pagination: PaginationMetadata }> {
+  ): Promise<{ 
+    contacts: Contact[]; 
+    pagination: PaginationMetadata;
+    totalWhatsappExists: number;
+    totalWhatsappNotExists: number;
+    totalNotValidated: number;
+    totalBusiness: number;
+    totalVerified: number;
+  }> {
     const skip = (page - 1) * limit;
     
     // Construir filtros WHERE
@@ -120,15 +128,51 @@ export class ContactStorageService {
     const sortOrder = filters.sortOrder || 'desc';
     orderBy[sortBy] = sortOrder;
 
-    // Executar queries
-    const [contacts, total] = await Promise.all([
+    // Executar queries principais e contagens agregadas
+    const [contacts, total, totalWhatsappExists, totalWhatsappNotExists, totalNotValidated, totalBusiness, totalVerified] = await Promise.all([
       prisma.contact.findMany({
         where,
         orderBy,
         skip,
         take: limit
       }),
-      prisma.contact.count({ where })
+      prisma.contact.count({ where }),
+      // Contagem de contatos com WhatsApp
+      prisma.contact.count({ 
+        where: { 
+          ...where, 
+          whatsappExists: true 
+        } 
+      }),
+      // Contagem de contatos sem WhatsApp
+      prisma.contact.count({ 
+        where: { 
+          ...where, 
+          whatsappExists: false 
+        } 
+      }),
+      // Contagem de contatos não validados
+      prisma.contact.count({ 
+        where: { 
+          ...where, 
+          whatsappExists: null 
+        } 
+      }),
+      // Contagem de contatos Business
+      prisma.contact.count({ 
+        where: { 
+          ...where, 
+          whatsappBusiness: true 
+        } 
+      }),
+      // Contagem de contatos com nome verificado
+      prisma.contact.count({ 
+        where: { 
+          ...where, 
+          whatsappVerifiedName: { not: null },
+          NOT: { whatsappVerifiedName: '' }
+        } 
+      })
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -142,11 +186,21 @@ export class ContactStorageService {
       totalPages,
       hasNext,
       hasPrev
+      totalWhatsappExists,
+      totalWhatsappNotExists,
+      totalNotValidated,
+      totalBusiness,
+      totalVerified
     };
 
     return {
       contacts: contacts.map(this.mapContactFromPrisma),
-      pagination
+      pagination,
+      totalWhatsappExists,
+      totalWhatsappNotExists,
+      totalNotValidated,
+      totalBusiness,
+      totalVerified
     };
   }
 

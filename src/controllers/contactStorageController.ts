@@ -112,10 +112,20 @@ export class ContactStorageController {
 
       const result = await this.contactService.getContactsPaginated(userId, page, limit, filters);
 
+      // Incluir contagens agregadas na paginação
+      const paginationWithCounts = {
+        ...result.pagination,
+        totalWhatsappExists: result.totalWhatsappExists,
+        totalWhatsappNotExists: result.totalWhatsappNotExists,
+        totalNotValidated: result.totalNotValidated,
+        totalBusiness: result.totalBusiness,
+        totalVerified: result.totalVerified
+      };
+
       res.json({
         success: true,
         data: result.contacts,
-        pagination: result.pagination,
+        pagination: paginationWithCounts,
         message: 'Contatos recuperados com sucesso'
       });
 
