@@ -2,28 +2,26 @@ import { createClient } from '@supabase/supabase-js';
 import logger from '../../utils/logger';
 import { Contact, CreateContactRequest, UpdateContactRequest, ImportResult } from '../../types/contacts';
 
+// Carregar variáveis de ambiente em ambiente Node.js
+import dotenv from 'dotenv';
+dotenv.config();
+
 export class ContactStorageService {
   private supabase;
 
   constructor() {
     // Debug das variáveis de ambiente
     console.log('🔍 Verificando variáveis de ambiente do Supabase:');
-    console.log('VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'DEFINIDA' : 'NÃO DEFINIDA');
-    console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'DEFINIDA' : 'NÃO DEFINIDA');
-    console.log('VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
-    console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
-    
-    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    // Usar process.env para Node.js
+    const supabaseUrl = process.env.VITE_SUPABASE_URL as string | undefined;
+    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-    console.log('📋 Valores finais:');
-    console.log('supabaseUrl:', supabaseUrl ? 'ENCONTRADA' : 'NÃO ENCONTRADA');
-    console.log('supabaseKey:', supabaseKey ? 'ENCONTRADA' : 'NÃO ENCONTRADA');
+    // Debug seguro (não loga valores, só presença)
+    console.log('🔍 VITE_SUPABASE_URL:', supabaseUrl ? 'DEFINIDA' : 'NÃO DEFINIDA');
+    console.log('🔍 VITE_SUPABASE_ANON_KEY:', supabaseKey ? 'DEFINIDA' : 'NÃO DEFINIDA');
 
     if (!supabaseUrl || !supabaseKey) {
-      console.warn('⚠️  Supabase não configurado. Funcionalidades de contatos armazenados não estarão disponíveis.');
-      console.warn('   Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env');
-      // Criar cliente mock para evitar erros
+      console.warn('⚠️ Supabase não configurado. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env');
       this.supabase = null as any;
       return;
     }
