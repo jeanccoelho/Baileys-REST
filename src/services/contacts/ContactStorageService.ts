@@ -14,21 +14,33 @@ export class ContactStorageService {
     console.log('🔍 Verificando variáveis de ambiente do Supabase:');
     // Usar process.env para Node.js
     const supabaseUrl = process.env.VITE_SUPABASE_URL as string | undefined;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string | undefined;
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
     // Debug seguro (não loga valores, só presença)
     console.log('🔍 VITE_SUPABASE_URL:', supabaseUrl ? 'DEFINIDA' : 'NÃO DEFINIDA');
     console.log('🔍 SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
     console.log('🔍 VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.warn('⚠️ Supabase não configurado. Configure VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou VITE_SUPABASE_ANON_KEY) no .env');
+    // Priorizar service role key para operações do backend
+    const keyToUse = supabaseServiceKey || supabaseAnonKey;
+    
+    if (!supabaseUrl || !keyToUse) {
+      console.warn('⚠️ Supabase não configurado. Configure VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env');
       this.supabase = null as any;
       return;
     }
 
-    console.log(`✅ Inicializando cliente Supabase com ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE ROLE' : 'ANON'} key...`);
-    this.supabase = createClient(supabaseUrl, supabaseKey);
+    const keyType = supabaseServiceKey ? 'SERVICE ROLE' : 'ANON';
+    console.log(`✅ Inicializando cliente Supabase com ${keyType} key...`);
+    
+    this.supabase = createClient(supabaseUrl, keyToUse, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+    
     console.log('✅ Cliente Supabase inicializado com sucesso!');
   }
 
@@ -69,7 +81,7 @@ export class ContactStorageService {
 
   async createContact(userId: string, data: CreateContactRequest): Promise<Contact> {
     if (!this.supabase) {
-      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY');
+      throw new Error('Supabase não configurado. Configure VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env');
     }
 
     const phoneNumber = this.validatePhoneNumber(data.phone_number);
