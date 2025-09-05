@@ -301,13 +301,29 @@ export class EventHandlers {
         // Aguardar um pouco para o socket estar pronto
         setTimeout(async () => {
           try {
-            const code = await sock.requestPairingCode(instance.phoneNumber!);
-            instance.pairingCode = code;
-            instance.status = 'code_pending';
-            logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
+            // Verificar se ainda não tem código ou se precisa de um novo
+            if (!instance.pairingCode || instance.status !== 'code_pending') {
+              const code = await sock.requestPairingCode(instance.phoneNumber!);
+              instance.pairingCode = code;
+              instance.status = 'code_pending';
+              logger.info(`Código de emparelhamento gerado para ${connectionId}: ${code}`);
+            }
           } catch (error) {
             logger.error(`Erro ao gerar código de emparelhamento para ${connectionId}:`, error);
-            instance.status = 'disconnected';
+            // Não marcar como desconectado imediatamente, tentar novamente
+            setTimeout(async () => {
+              if (instance.shouldBeConnected && !instance.pairingCode) {
+                try {
+                  const code = await sock.requestPairingCode(instance.phoneNumber!);
+                  instance.pairingCode = code;
+                  instance.status = 'code_pending';
+                  logger.info(`Código de emparelhamento gerado (retry) para ${connectionId}: ${code}`);
+                } catch (retryError) {
+                  logger.error(`Erro na segunda tentativa de código para ${connectionId}:`, retryError);
+                  instance.status = 'disconnected';
+                }
+              }
+            }, 2000);
           }
         }, 1000);
       }
@@ -379,10 +395,16 @@ export class EventHandlers {
       ];
       
       if (permanentDisconnectReasons.includes(reason)) {
-        logger.warn(`Instância ${connectionId} desconectada permanentemente. Razão: ${reason}`);
-        instance.shouldBeConnected = false;
-        // Cleanup será feito pelo ConnectionManager
-        return;
+        // Para código de emparelhamento, dar mais chances
+        if (instance.pairingMethod === 'code' && reason === 503 && instance.reconnectionAttempts < 3) {
+          logger.warn(`Instância ${connectionId} com erro 503 (código), tentando reconectar...`);
+          // Continuar para lógica de reconexão
+        } else {
+          logger.warn(`Instância ${connectionId} desconectada permanentemente. Razão: ${reason}`);
+          instance.shouldBeConnected = false;
+          // Cleanup será feito pelo ConnectionManager
+          return;
+        }
       }
       
       const shouldReconnect = 
