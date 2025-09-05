@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { ContactStorageService } from '../services/contacts/ContactStorageService';
-import { ContactResponse, CreateContactRequest, UpdateContactRequest, ValidateContactRequest } from '../types/contacts';
+import { ContactResponse, CreateContactRequest, UpdateContactRequest, ValidateContactRequest, ImportResult, PaginatedApiResponse } from '../types/contacts';
 import whatsappService from '../services/whatsappService';
 import logger from '../utils/logger';
 
@@ -12,8 +12,8 @@ export class ContactStorageController {
   }
 
   createContact = async (
-    req: Request<{}, ContactResponse, CreateContactRequest>,
-    res: Response<ContactResponse>
+    req: Request<{}, PaginatedApiResponse, CreateContactRequest>,
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const { phone_number, name } = req.body;
@@ -42,6 +42,7 @@ export class ContactStorageController {
       res.status(201).json({
         success: true,
         data: contact,
+        pagination: {} as any,
         message: 'Contato criado com sucesso'
       });
 
@@ -57,7 +58,7 @@ export class ContactStorageController {
 
   getContacts = async (
     req: Request,
-    res: Response<ContactResponse>
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const userId = req.user?.userId;
@@ -71,11 +72,50 @@ export class ContactStorageController {
         return;
       }
 
-      const contacts = await this.contactService.getContacts(userId);
+      // Extrair parâmetros de query
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = req.query.search as string;
+      const phoneNumber = req.query.phoneNumber as string;
+      const createdAtStart = req.query.createdAtStart as string;
+      const createdAtEnd = req.query.createdAtEnd as string;
+      const sortBy = req.query.sortBy as 'createdAt' | 'updatedAt' | 'phoneNumber' | 'name' | 'lastWhatsappCheck';
+      const sortOrder = req.query.sortOrder as 'asc' | 'desc';
+
+      // Converter strings para boolean/null de forma segura
+      const hasWhatsAppStr = req.query.hasWhatsApp as string;
+      const hasWhatsApp = hasWhatsAppStr === 'true' ? true : 
+                         hasWhatsAppStr === 'false' ? false : 
+                         hasWhatsAppStr === 'null' ? null : undefined;
+
+      const hasPictureStr = req.query.hasPicture as string;
+      const hasPicture = hasPictureStr === 'true' ? true : 
+                        hasPictureStr === 'false' ? false : 
+                        hasPictureStr === 'null' ? null : undefined;
+
+      const notValidatedStr = req.query.notValidated as string;
+      const notValidated = notValidatedStr === 'true' ? true : 
+                          notValidatedStr === 'false' ? false : 
+                          notValidatedStr === 'null' ? null : undefined;
+
+      const filters = {
+        search,
+        phoneNumber,
+        hasWhatsApp,
+        hasPicture,
+        notValidated,
+        createdAtStart,
+        createdAtEnd,
+        sortBy,
+        sortOrder
+      };
+
+      const result = await this.contactService.getContactsPaginated(userId, page, limit, filters);
 
       res.json({
         success: true,
-        data: contacts,
+        data: result.contacts,
+        pagination: result.pagination,
         message: 'Contatos recuperados com sucesso'
       });
 
@@ -91,7 +131,7 @@ export class ContactStorageController {
 
   getContactById = async (
     req: Request<{ contactId: string }>,
-    res: Response<ContactResponse>
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const { contactId } = req.params;
@@ -120,6 +160,7 @@ export class ContactStorageController {
       res.json({
         success: true,
         data: contact,
+        pagination: {} as any,
         message: 'Contato recuperado com sucesso'
       });
 
@@ -134,8 +175,8 @@ export class ContactStorageController {
   };
 
   updateContact = async (
-    req: Request<{ contactId: string }, ContactResponse, UpdateContactRequest>,
-    res: Response<ContactResponse>
+    req: Request<{ contactId: string }, PaginatedApiResponse, UpdateContactRequest>,
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const { contactId } = req.params;
@@ -166,6 +207,7 @@ export class ContactStorageController {
       res.json({
         success: true,
         data: contact,
+        pagination: {} as any,
         message: 'Contato atualizado com sucesso'
       });
 
@@ -181,7 +223,7 @@ export class ContactStorageController {
 
   deleteContact = async (
     req: Request<{ contactId: string }>,
-    res: Response<ContactResponse>
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const { contactId } = req.params;
@@ -200,6 +242,7 @@ export class ContactStorageController {
 
       res.json({
         success: true,
+        pagination: {} as any,
         message: 'Contato removido com sucesso'
       });
 
@@ -215,7 +258,7 @@ export class ContactStorageController {
 
   importContacts = async (
     req: Request,
-    res: Response<ContactResponse>
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const file = req.file;
@@ -268,6 +311,7 @@ export class ContactStorageController {
       res.json({
         success: true,
         data: result,
+        pagination: {} as any,
         message: `Importação concluída: ${result.imported} importados, ${result.skipped} ignorados, ${result.errors.length} erros`
       });
 
@@ -283,7 +327,7 @@ export class ContactStorageController {
 
   deleteAllContacts = async (
     req: Request,
-    res: Response<ContactResponse>
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const userId = req.user?.userId;
@@ -302,6 +346,7 @@ export class ContactStorageController {
       res.json({
         success: true,
         data: { deletedCount },
+        pagination: {} as any,
         message: `${deletedCount} contatos removidos com sucesso`
       });
 
@@ -316,8 +361,8 @@ export class ContactStorageController {
   };
 
   validateContactWhatsApp = async (
-    req: Request<{}, ContactResponse, ValidateContactRequest>,
-    res: Response<ContactResponse>
+    req: Request<{}, PaginatedApiResponse, ValidateContactRequest>,
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const { contact_id, connection_id } = req.body;
@@ -376,6 +421,7 @@ export class ContactStorageController {
           contact: updatedContact,
           whatsapp: whatsappData
         },
+        pagination: {} as any,
         message: 'Contato validado no WhatsApp com sucesso'
       });
 
@@ -391,7 +437,7 @@ export class ContactStorageController {
 
   getContactsWithWhatsApp = async (
     req: Request,
-    res: Response<ContactResponse>
+    res: Response<PaginatedApiResponse>
   ): Promise<void> => {
     try {
       const userId = req.user?.userId;
@@ -410,6 +456,7 @@ export class ContactStorageController {
       res.json({
         success: true,
         data: contacts,
+        pagination: {} as any,
         message: 'Contatos com dados do WhatsApp recuperados com sucesso'
       });
 

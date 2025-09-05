@@ -1,6 +1,7 @@
 import prisma from '../../lib/prisma';
 import logger from '../../utils/logger';
-import { Contact, CreateContactRequest, UpdateContactRequest, ImportResult } from '../../types/contacts';
+import { Contact, CreateContactRequest, UpdateContactRequest, ImportResult, ContactFilters, PaginationMetadata } from '../../types/contacts';
+import { Contact as PrismaContactType, Prisma } from '@prisma/client';
 
 export class ContactStorageService {
   private validatePhoneNumber(phoneNumber: string): string {
@@ -41,6 +42,111 @@ export class ContactStorageService {
 
     logger.info(`Contato criado: ${phoneNumber} para usuário ${userId}`);
     return this.mapContactFromPrisma(contact);
+  }
+
+  async getContactsPaginated(
+    userId: string, 
+    page: number = 1, 
+    limit: number = 10, 
+    filters: ContactFilters = {}
+  ): Promise<{ contacts: Contact[]; pagination: PaginationMetadata }> {
+    const skip = (page - 1) * limit;
+    
+    // Construir filtros WHERE
+    const where: Prisma.ContactWhereInput = {
+      userId
+    };
+
+    // Filtro de busca (nome ou telefone)
+    if (filters.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { phoneNumber: { contains: filters.search } }
+      ];
+    }
+
+    // Filtro por número específico
+    if (filters.phoneNumber) {
+      where.phoneNumber = { contains: filters.phoneNumber };
+    }
+
+    // Filtro por WhatsApp
+    if (filters.hasWhatsApp === true) {
+      where.whatsappExists = true;
+    } else if (filters.hasWhatsApp === false) {
+      where.whatsappExists = false;
+    } else if (filters.hasWhatsApp === null) {
+      where.whatsappExists = null;
+    }
+
+    // Filtro por foto de perfil
+    if (filters.hasPicture === true) {
+      where.whatsappPicture = {
+        not: { in: [null, ''] }
+      };
+    } else if (filters.hasPicture === false) {
+      where.OR = [
+        { whatsappPicture: null },
+        { whatsappPicture: '' }
+      ];
+    }
+
+    // Filtro por não validados
+    if (filters.notValidated === true) {
+      where.lastWhatsappCheck = null;
+    } else if (filters.notValidated === false) {
+      where.lastWhatsappCheck = { not: null };
+    }
+
+    // Filtros de data
+    if (filters.createdAtStart || filters.createdAtEnd) {
+      where.createdAt = {
+        ...(where.createdAt as Prisma.DateTimeFilter || {})
+      };
+      
+      if (filters.createdAtStart) {
+        (where.createdAt as Prisma.DateTimeFilter).gte = new Date(filters.createdAtStart);
+      }
+      
+      if (filters.createdAtEnd) {
+        (where.createdAt as Prisma.DateTimeFilter).lte = new Date(filters.createdAtEnd);
+      }
+    }
+
+    // Ordenação
+    const orderBy: Prisma.ContactOrderByWithRelationInput = {};
+    const sortBy = filters.sortBy as keyof Prisma.ContactOrderByWithRelationInput || 'createdAt';
+    const sortOrder = filters.sortOrder || 'desc';
+    orderBy[sortBy] = sortOrder;
+
+    // Executar queries
+    const [contacts, total] = await Promise.all([
+      prisma.contact.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit
+      }),
+      prisma.contact.count({ where })
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+    const hasNext = page < totalPages;
+    const hasPrev = page > 1;
+
+    const pagination: PaginationMetadata = {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev
+    };
+
+    return {
+      contacts: contacts.map(this.mapContactFromPrisma),
+      pagination
+    };
   }
 
   async getContacts(userId: string): Promise<Contact[]> {
@@ -264,7 +370,7 @@ export class ContactStorageService {
     return contacts.map(this.mapContactFromPrisma);
   }
 
-  private mapContactFromPrisma(contact: any): Contact {
+  private mapContactFromPrisma(contact: PrismaContactType): Contact {
     return {
       id: contact.id,
       user_id: contact.userId,

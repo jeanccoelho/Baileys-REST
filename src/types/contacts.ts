@@ -20,6 +20,35 @@ export interface Contact {
   updated_at: Date;
 }
 
+export interface ContactFilters {
+  search?: string;
+  phoneNumber?: string;
+  hasWhatsApp?: boolean | null;
+  hasPicture?: boolean | null;
+  notValidated?: boolean | null;
+  createdAtStart?: string;
+  createdAtEnd?: string;
+  sortBy?: 'createdAt' | 'updatedAt' | 'phoneNumber' | 'name' | 'lastWhatsappCheck';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginationMetadata {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface PaginatedApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  pagination?: PaginationMetadata;
+  message?: string;
+  error?: string;
+}
+
 export interface CreateContactRequest {
   phone_number: string;
   name?: string;
@@ -48,9 +77,10 @@ export interface ImportContactsRequest {
   contacts: string[];
 }
 
-export interface ContactResponse {
+export interface ContactResponse extends PaginatedApiResponse<Contact | Contact[] | ImportResult | any> {
   success: boolean;
-  data?: Contact | Contact[] | any;
+  data?: Contact | Contact[] | ImportResult | any;
+  pagination?: PaginationMetadata;
   message?: string;
   error?: string;
 }
