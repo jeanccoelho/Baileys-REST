@@ -71,7 +71,6 @@ export interface ValidatedNumber {
   email?: string;
   address?: string;
   category?: string;
-  lastSeen?: number;
   isOnline?: boolean;
   lastSeen?: number;
 }

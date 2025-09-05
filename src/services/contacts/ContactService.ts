@@ -183,9 +183,9 @@ export class ContactService {
       // 1. Status do usuário
       try {
         const status = await instance.socket.fetchStatus(finalJid);
-        if (status?.status) {
-          validatedNumber.status = status.status;
-          logger.info(`Status obtido para ${number}: ${status.status}`);
+        if (status && typeof status === 'object' && 'status' in status) {
+          validatedNumber.status = (status as any).status;
+          logger.info(`Status obtido para ${number}: ${(status as any).status}`);
         }
       } catch (e) {
         logger.debug(`Não foi possível obter status para ${number}:`, e);
@@ -220,10 +220,12 @@ export class ContactService {
           
           // Informações extras do negócio
           if (businessProfile.business_hours) {
-            validatedNumber.businessHours = businessProfile.business_hours;
+            validatedNumber.businessHours = JSON.stringify(businessProfile.business_hours);
           }
           if (businessProfile.website) {
-            validatedNumber.website = businessProfile.website;
+            validatedNumber.website = Array.isArray(businessProfile.website) 
+              ? businessProfile.website[0] 
+              : businessProfile.website;
           }
           if (businessProfile.email) {
             validatedNumber.email = businessProfile.email;
@@ -247,8 +249,10 @@ export class ContactService {
       // 4. Nome verificado (se disponível)
       try {
         // Tentar obter informações do contato se estiver na lista
-        const contactInfo = await instance.socket.getContact(finalJid);
-        if (contactInfo) {
+        // Usar store de contatos do Baileys se disponível
+        const store = (instance.socket as any).store;
+        if (store && store.contacts && store.contacts[finalJid]) {
+          const contactInfo = store.contacts[finalJid];
           if (contactInfo.verifiedName) {
             validatedNumber.verifiedName = contactInfo.verifiedName;
             logger.info(`Nome verificado obtido para ${number}: ${contactInfo.verifiedName}`);
@@ -275,11 +279,11 @@ export class ContactService {
 
       // 6. Verificar se é um número premium/verificado
       try {
-        if (validResult.isBusiness !== undefined) {
-          validatedNumber.business = validResult.isBusiness;
+        if ('isBusiness' in validResult && (validResult as any).isBusiness !== undefined) {
+          validatedNumber.business = (validResult as any).isBusiness;
         }
-        if (validResult.verifiedName) {
-          validatedNumber.verifiedName = validResult.verifiedName;
+        if ('verifiedName' in validResult && (validResult as any).verifiedName) {
+          validatedNumber.verifiedName = (validResult as any).verifiedName;
         }
       } catch (e) {
         logger.debug(`Erro ao processar dados extras de ${number}:`, e);
