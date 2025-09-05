@@ -6,8 +6,19 @@ export class ContactStorageService {
   private supabase;
 
   constructor() {
+    // Debug das variáveis de ambiente
+    console.log('🔍 Verificando variáveis de ambiente do Supabase:');
+    console.log('VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'DEFINIDA' : 'NÃO DEFINIDA');
+    console.log('SUPABASE_URL:', process.env.SUPABASE_URL ? 'DEFINIDA' : 'NÃO DEFINIDA');
+    console.log('VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
+    console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
+    
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+
+    console.log('📋 Valores finais:');
+    console.log('supabaseUrl:', supabaseUrl ? 'ENCONTRADA' : 'NÃO ENCONTRADA');
+    console.log('supabaseKey:', supabaseKey ? 'ENCONTRADA' : 'NÃO ENCONTRADA');
 
     if (!supabaseUrl || !supabaseKey) {
       console.warn('⚠️  Supabase não configurado. Funcionalidades de contatos armazenados não estarão disponíveis.');
@@ -17,7 +28,9 @@ export class ContactStorageService {
       return;
     }
 
+    console.log('✅ Inicializando cliente Supabase...');
     this.supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('✅ Cliente Supabase inicializado com sucesso!');
   }
 
   private validatePhoneNumber(phoneNumber: string): string {
