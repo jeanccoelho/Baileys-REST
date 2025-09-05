@@ -185,7 +185,7 @@ export class ContactStorageService {
       total,
       totalPages,
       hasNext,
-      hasPrev
+      hasPrev,
       totalWhatsappExists,
       totalWhatsappNotExists,
       totalNotValidated,
