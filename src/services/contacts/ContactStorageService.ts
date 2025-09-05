@@ -64,15 +64,54 @@ export class ContactStorageService {
   }
 
   async updateContact(userId: string, contactId: string, data: UpdateContactRequest): Promise<Contact> {
+    // Preparar dados para atualização
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // Campos básicos
+    if (data.name !== undefined) {
+      updateData.name = data.name?.trim() || null;
+    }
+
+    // Campos do WhatsApp
+    if (data.whatsapp_status !== undefined) {
+      updateData.whatsappStatus = data.whatsapp_status;
+    }
+    if (data.whatsapp_picture !== undefined) {
+      updateData.whatsappPicture = data.whatsapp_picture;
+    }
+    if (data.whatsapp_business !== undefined) {
+      updateData.whatsappBusiness = data.whatsapp_business;
+    }
+    if (data.whatsapp_verified_name !== undefined) {
+      updateData.whatsappVerifiedName = data.whatsapp_verified_name;
+    }
+    if (data.whatsapp_business_hours !== undefined) {
+      updateData.whatsappBusinessHours = data.whatsapp_business_hours;
+    }
+    if (data.whatsapp_website !== undefined) {
+      updateData.whatsappWebsite = data.whatsapp_website;
+    }
+    if (data.whatsapp_email !== undefined) {
+      updateData.whatsappEmail = data.whatsapp_email;
+    }
+    if (data.whatsapp_address !== undefined) {
+      updateData.whatsappAddress = data.whatsapp_address;
+    }
+    if (data.whatsapp_category !== undefined) {
+      updateData.whatsappCategory = data.whatsapp_category;
+    }
+    if (data.metadata !== undefined) {
+      updateData.metadata = data.metadata;
+    }
+
     const contact = await prisma.contact.updateMany({
       where: {
         id: contactId,
         userId
       },
-      data: {
-        name: data.name?.trim() || null,
-        updatedAt: new Date()
-      }
+      data: updateData
     });
 
     if (contact.count === 0) {
@@ -242,6 +281,7 @@ export class ContactStorageService {
       whatsapp_email: contact.whatsappEmail,
       whatsapp_address: contact.whatsappAddress,
       whatsapp_category: contact.whatsappCategory,
+      metadata: contact.metadata,
       last_whatsapp_check: contact.lastWhatsappCheck,
       created_at: contact.createdAt,
       updated_at: contact.updatedAt

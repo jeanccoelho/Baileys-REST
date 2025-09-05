@@ -14,6 +14,7 @@ export interface Contact {
   whatsapp_email?: string;
   whatsapp_address?: string;
   whatsapp_category?: string;
+  metadata?: any;
   last_whatsapp_check?: Date;
   created_at: Date;
   updated_at: Date;
@@ -26,6 +27,16 @@ export interface CreateContactRequest {
 
 export interface UpdateContactRequest {
   name?: string;
+  whatsapp_business_hours?: string;
+  whatsapp_website?: string;
+  whatsapp_email?: string;
+  whatsapp_address?: string;
+  whatsapp_category?: string;
+  whatsapp_status?: string;
+  whatsapp_picture?: string;
+  whatsapp_business?: boolean;
+  whatsapp_verified_name?: string;
+  metadata?: any;
 }
 
 export interface ValidateContactRequest {

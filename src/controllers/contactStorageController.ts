@@ -139,7 +139,7 @@ export class ContactStorageController {
   ): Promise<void> => {
     try {
       const { contactId } = req.params;
-      const { name } = req.body;
+      const updateData = req.body;
       const userId = req.user?.userId;
 
       if (!userId) {
@@ -151,7 +151,17 @@ export class ContactStorageController {
         return;
       }
 
-      const contact = await this.contactService.updateContact(userId, contactId, { name });
+      // Validar metadata se fornecido
+      if (updateData.metadata && typeof updateData.metadata !== 'object') {
+        res.status(400).json({
+          success: false,
+          error: 'Metadata deve ser um objeto JSON válido',
+          message: 'Forneça metadata no formato de objeto'
+        });
+        return;
+      }
+
+      const contact = await this.contactService.updateContact(userId, contactId, updateData);
 
       res.json({
         success: true,

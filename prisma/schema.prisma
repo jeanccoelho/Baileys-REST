@@ -42,6 +42,7 @@ model Contact {
   whatsappEmail          String?   @map("whatsapp_email")
   whatsappAddress        String?   @map("whatsapp_address")
   whatsappCategory       String?   @map("whatsapp_category")
+  metadata               Json?     @map("metadata")
   lastWhatsappCheck      DateTime? @map("last_whatsapp_check")
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
