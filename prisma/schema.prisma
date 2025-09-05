@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  password         String
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relacionamentos
+  contacts Contact[]
+
+  @@map("users")
+}
+
+model Contact {
+  id                     String    @id @default(cuid())
+  userId                 String    @map("user_id")
+  phoneNumber            String    @map("phone_number")
+  name                   String?
+  whatsappExists         Boolean?  @map("whatsapp_exists")
+  whatsappJid            String?   @map("whatsapp_jid")
+  whatsappStatus         String?   @map("whatsapp_status")
+  whatsappPicture        String?   @map("whatsapp_picture")
+  whatsappBusiness       Boolean   @default(false) @map("whatsapp_business")
+  whatsappVerifiedName   String?   @map("whatsapp_verified_name")
+  lastWhatsappCheck      DateTime? @map("last_whatsapp_check")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Índices
+  @@unique([userId, phoneNumber], name: "user_phone_unique")
+  @@index([phoneNumber])
+  @@index([userId])
+  @@map("contacts")
+}
