@@ -14,21 +14,46 @@ export class ContactStorageService {
     console.log('🔍 Verificando variáveis de ambiente do Supabase:');
     // Usar process.env para Node.js
     const supabaseUrl = process.env.VITE_SUPABASE_URL as string | undefined;
-    const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
     // Debug seguro (não loga valores, só presença)
     console.log('🔍 VITE_SUPABASE_URL:', supabaseUrl ? 'DEFINIDA' : 'NÃO DEFINIDA');
-    console.log('🔍 VITE_SUPABASE_ANON_KEY:', supabaseKey ? 'DEFINIDA' : 'NÃO DEFINIDA');
+    console.log('🔍 SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
+    console.log('🔍 VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? 'DEFINIDA' : 'NÃO DEFINIDA');
 
     if (!supabaseUrl || !supabaseKey) {
-      console.warn('⚠️ Supabase não configurado. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env');
+      console.warn('⚠️ Supabase não configurado. Configure VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (ou VITE_SUPABASE_ANON_KEY) no .env');
       this.supabase = null as any;
       return;
     }
 
-    console.log('✅ Inicializando cliente Supabase...');
+    console.log(`✅ Inicializando cliente Supabase com ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE ROLE' : 'ANON'} key...`);
     this.supabase = createClient(supabaseUrl, supabaseKey);
     console.log('✅ Cliente Supabase inicializado com sucesso!');
+  }
+
+  /**
+   * Autentica usuário no Supabase usando email temporário
+   * Como não temos sistema de auth integrado, vamos usar o user_id como identificador
+   */
+  private async ensureSupabaseAuth(userId: string): Promise<void> {
+    if (!this.supabase) return;
+
+    try {
+      // Verificar se já está autenticado
+      const { data: { user } } = await this.supabase.auth.getUser();
+      if (user) {
+        logger.debug(`Usuário já autenticado no Supabase: ${user.id}`);
+        return;
+      }
+
+      // Como não temos integração completa de auth, vamos usar service role
+      // ou criar um método alternativo
+      logger.debug('Usuário não autenticado no Supabase, usando service role');
+      
+    } catch (error) {
+      logger.error('Erro na autenticação Supabase:', error);
+    }
   }
 
   private validatePhoneNumber(phoneNumber: string): string {
@@ -44,7 +69,7 @@ export class ContactStorageService {
 
   async createContact(userId: string, data: CreateContactRequest): Promise<Contact> {
     if (!this.supabase) {
-      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY');
+      throw new Error('Supabase não configurado. Configure as variáveis de ambiente VITE_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY');
     }
 
     const phoneNumber = this.validatePhoneNumber(data.phone_number);
