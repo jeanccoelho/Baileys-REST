@@ -352,7 +352,12 @@ export class ContactStorageController {
         status: whatsappData.status,
         picture: whatsappData.picture,
         business: whatsappData.business,
-        verifiedName: whatsappData.name
+        verifiedName: whatsappData.verifiedName || whatsappData.name,
+        businessHours: whatsappData.businessHours,
+        website: whatsappData.website,
+        email: whatsappData.email,
+        address: whatsappData.address,
+        category: whatsappData.category
       });
 
       res.json({

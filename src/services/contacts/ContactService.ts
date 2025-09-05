@@ -177,31 +177,112 @@ export class ContactService {
         jid: validResult.jid || validJid
       };
 
-      // Tentar obter informações adicionais
+      // Obter todas as informações possíveis do WhatsApp
+      const finalJid = validResult.jid || validJid;
+      
+      // 1. Status do usuário
       try {
-        const status = await instance.socket.fetchStatus(validResult.jid || validJid);
-        if (status && typeof status === 'object' && 'status' in status) {
-          validatedNumber.status = (status as any).status;
+        const status = await instance.socket.fetchStatus(finalJid);
+        if (status?.status) {
+          validatedNumber.status = status.status;
+          logger.info(`Status obtido para ${number}: ${status.status}`);
         }
       } catch (e) {
-        logger.debug(`Não foi possível obter status para ${validJid}`);
+        logger.debug(`Não foi possível obter status para ${number}:`, e);
       }
 
+      // 2. Foto de perfil (alta resolução)
       try {
-        const profilePic = await instance.socket.profilePictureUrl(validResult.jid || validJid, 'image');
-        validatedNumber.picture = profilePic;
+        const profilePicHigh = await instance.socket.profilePictureUrl(finalJid, 'image');
+        if (profilePicHigh) {
+          validatedNumber.picture = profilePicHigh;
+          logger.info(`Foto de perfil (alta) obtida para ${number}`);
+        }
       } catch (e) {
-        logger.debug(`Não foi possível obter foto do perfil para ${validJid}`);
+        // Tentar foto em baixa resolução se alta falhar
+        try {
+          const profilePicLow = await instance.socket.profilePictureUrl(finalJid, 'preview');
+          if (profilePicLow) {
+            validatedNumber.picture = profilePicLow;
+            logger.info(`Foto de perfil (baixa) obtida para ${number}`);
+          }
+        } catch (e2) {
+          logger.debug(`Não foi possível obter foto do perfil para ${number}:`, e2);
+        }
       }
 
+      // 3. Perfil comercial (WhatsApp Business)
       try {
-        const businessProfile = await instance.socket.getBusinessProfile(validResult.jid || validJid);
-        validatedNumber.business = !!businessProfile;
+        const businessProfile = await instance.socket.getBusinessProfile(finalJid);
         if (businessProfile) {
-          validatedNumber.name = businessProfile.description;
+          validatedNumber.business = true;
+          validatedNumber.name = businessProfile.description || businessProfile.email || '';
+          
+          // Informações extras do negócio
+          if (businessProfile.business_hours) {
+            validatedNumber.businessHours = businessProfile.business_hours;
+          }
+          if (businessProfile.website) {
+            validatedNumber.website = businessProfile.website;
+          }
+          if (businessProfile.email) {
+            validatedNumber.email = businessProfile.email;
+          }
+          if (businessProfile.address) {
+            validatedNumber.address = businessProfile.address;
+          }
+          if (businessProfile.category) {
+            validatedNumber.category = businessProfile.category;
+          }
+          
+          logger.info(`Perfil comercial obtido para ${number}: ${businessProfile.description || 'Sem descrição'}`);
+        } else {
+          validatedNumber.business = false;
         }
       } catch (e) {
-        logger.debug(`Não foi possível obter perfil comercial para ${validJid}`);
+        validatedNumber.business = false;
+        logger.debug(`Não foi possível obter perfil comercial para ${number}:`, e);
+      }
+
+      // 4. Nome verificado (se disponível)
+      try {
+        // Tentar obter informações do contato se estiver na lista
+        const contactInfo = await instance.socket.getContact(finalJid);
+        if (contactInfo) {
+          if (contactInfo.verifiedName) {
+            validatedNumber.verifiedName = contactInfo.verifiedName;
+            logger.info(`Nome verificado obtido para ${number}: ${contactInfo.verifiedName}`);
+          }
+          if (contactInfo.name && !validatedNumber.name) {
+            validatedNumber.name = contactInfo.name;
+          }
+          if (contactInfo.notify && !validatedNumber.name) {
+            validatedNumber.name = contactInfo.notify;
+          }
+        }
+      } catch (e) {
+        logger.debug(`Não foi possível obter informações de contato para ${number}:`, e);
+      }
+
+      // 5. Última visualização (se disponível)
+      try {
+        const presence = await instance.socket.presenceSubscribe(finalJid);
+        // Note: presença é mais complexa e pode não estar sempre disponível
+        logger.debug(`Presença subscrita para ${number}`);
+      } catch (e) {
+        logger.debug(`Não foi possível obter presença para ${number}:`, e);
+      }
+
+      // 6. Verificar se é um número premium/verificado
+      try {
+        if (validResult.isBusiness !== undefined) {
+          validatedNumber.business = validResult.isBusiness;
+        }
+        if (validResult.verifiedName) {
+          validatedNumber.verifiedName = validResult.verifiedName;
+        }
+      } catch (e) {
+        logger.debug(`Erro ao processar dados extras de ${number}:`, e);
       }
 
       logger.info(`Número ${number} validado com sucesso para ${connectionId}`);

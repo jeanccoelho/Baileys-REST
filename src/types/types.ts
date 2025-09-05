@@ -65,6 +65,14 @@ export interface ValidatedNumber {
   picture?: string;
   name?: string;
   business?: boolean;
+  verifiedName?: string;
+  businessHours?: string;
+  website?: string;
+  email?: string;
+  address?: string;
+  category?: string;
+  lastSeen?: number;
+  isOnline?: boolean;
   lastSeen?: number;
 }
 

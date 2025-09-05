@@ -9,6 +9,11 @@ export interface Contact {
   whatsapp_picture?: string;
   whatsapp_business?: boolean;
   whatsapp_verified_name?: string;
+  whatsapp_business_hours?: string;
+  whatsapp_website?: string;
+  whatsapp_email?: string;
+  whatsapp_address?: string;
+  whatsapp_category?: string;
   last_whatsapp_check?: Date;
   created_at: Date;
   updated_at: Date;

@@ -172,6 +172,11 @@ export class ContactStorageService {
       picture?: string;
       business?: boolean;
       verifiedName?: string;
+      businessHours?: string;
+      website?: string;
+      email?: string;
+      address?: string;
+      category?: string;
     }
   ): Promise<Contact> {
     const contact = await prisma.contact.updateMany({
@@ -186,6 +191,11 @@ export class ContactStorageService {
         whatsappPicture: whatsappData.picture || null,
         whatsappBusiness: whatsappData.business || false,
         whatsappVerifiedName: whatsappData.verifiedName || null,
+        whatsappBusinessHours: whatsappData.businessHours || null,
+        whatsappWebsite: whatsappData.website || null,
+        whatsappEmail: whatsappData.email || null,
+        whatsappAddress: whatsappData.address || null,
+        whatsappCategory: whatsappData.category || null,
         lastWhatsappCheck: new Date(),
         updatedAt: new Date()
       }
@@ -227,6 +237,11 @@ export class ContactStorageService {
       whatsapp_picture: contact.whatsappPicture,
       whatsapp_business: contact.whatsappBusiness,
       whatsapp_verified_name: contact.whatsappVerifiedName,
+      whatsapp_business_hours: contact.whatsappBusinessHours,
+      whatsapp_website: contact.whatsappWebsite,
+      whatsapp_email: contact.whatsappEmail,
+      whatsapp_address: contact.whatsappAddress,
+      whatsapp_category: contact.whatsappCategory,
       last_whatsapp_check: contact.lastWhatsappCheck,
       created_at: contact.createdAt,
       updated_at: contact.updatedAt
