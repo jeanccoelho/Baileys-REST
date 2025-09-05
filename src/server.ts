@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-// Carregar variáveis de ambiente do arquivo .env
+// IMPORTANTE: Carregar variáveis de ambiente ANTES de qualquer outra importação
 dotenv.config();
 
 import app from './app';
