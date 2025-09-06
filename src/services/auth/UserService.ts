@@ -282,6 +282,19 @@ export class UserService {
     return userWithoutPassword as Omit<User, 'password'>;
   }
 
+  async getUserByEmail(email: string): Promise<Omit<User, 'password'> | null> {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    const { password: _, ...userWithoutPassword } = user;
+    return userWithoutPassword as Omit<User, 'password'>;
+  }
+
   verifyToken(token: string): JWTPayload {
     try {
       return jwt.verify(token, this.JWT_SECRET) as JWTPayload;

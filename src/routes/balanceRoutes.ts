@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { BalanceController } from '../controllers/balanceController';
-import { authenticate } from '../middleware/authMiddleware';
+import { authenticate, requireAdmin } from '../middleware/authMiddleware';
 import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
@@ -11,7 +11,7 @@ router.use(authenticate);
 
 // Rotas de saldo
 router.get('/', asyncHandler(balanceController.getBalance));
-router.post('/add', asyncHandler(balanceController.addBalance));
+router.post('/add', requireAdmin, asyncHandler(balanceController.addBalance));
 
 // Rotas de transações
 router.get('/transactions', asyncHandler(balanceController.getTransactions));

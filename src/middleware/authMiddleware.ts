@@ -102,6 +102,43 @@ export class AuthMiddleware {
   };
 }
 
+// Middleware para verificar se usuário é admin
+export const requireAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        error: 'Usuário não autenticado',
+        message: 'Token de acesso requerido'
+      });
+      return;
+    }
+
+    const userService = new UserService();
+    const user = await userService.getUserById(userId);
+
+    if (!user || user.role !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Acesso negado',
+        message: 'Apenas administradores podem realizar esta ação'
+      });
+      return;
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Erro na verificação de admin:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erro interno',
+      message: 'Falha na verificação de permissões'
+    });
+  }
+};
+
 // Instância singleton
 const authMiddleware = new AuthMiddleware();
 export const authenticate = authMiddleware.authenticate;

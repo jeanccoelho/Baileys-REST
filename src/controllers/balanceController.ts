@@ -49,7 +49,7 @@ export class BalanceController {
     res: Response<BalanceResponse>
   ): Promise<void> => {
     try {
-      const { amount, description } = req.body;
+      const { amount, userEmail, description } = req.body;
       const userId = req.user?.userId;
 
       if (!userId) {
@@ -70,18 +70,48 @@ export class BalanceController {
         return;
       }
 
+      let targetUserId = userId;
+      let targetUserEmail = '';
+
+      // Se userEmail foi fornecido, verificar se é admin e buscar usuário alvo
+      if (userEmail) {
+        const currentUser = await this.userService.getUserById(userId);
+        
+        if (!currentUser || currentUser.role !== 'admin') {
+          res.status(403).json({
+            success: false,
+            error: 'Acesso negado',
+            message: 'Apenas administradores podem gerenciar saldo de outros usuários'
+          });
+          return;
+        }
+
+        const targetUser = await this.userService.getUserByEmail(userEmail);
+        if (!targetUser) {
+          res.status(404).json({
+            success: false,
+            error: 'Usuário não encontrado',
+            message: `Usuário com email ${userEmail} não existe`
+          });
+          return;
+        }
+
+        targetUserId = targetUser.id;
+        targetUserEmail = targetUser.email;
+      }
+
       const result = await this.balanceService.addBalance(
-        userId, 
+        targetUserId, 
         amount, 
         'deposit', 
-        description || `Depósito de ${amount} créditos`
+        description || `Depósito de ${amount} créditos${targetUserEmail ? ` para ${targetUserEmail}` : ''}`
       );
 
       res.json({
         success: true,
         data: {
           balance: result.balance,
-          message: `${amount} créditos adicionados com sucesso`
+          message: `${amount} créditos adicionados com sucesso${targetUserEmail ? ` para ${targetUserEmail}` : ''}`
         },
         message: 'Créditos adicionados com sucesso'
       });

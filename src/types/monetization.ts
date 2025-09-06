@@ -35,6 +35,7 @@ export interface BalanceResponse {
 
 export interface AddBalanceRequest {
   amount: number;
+  userEmail?: string;
   description?: string;
 }
 
