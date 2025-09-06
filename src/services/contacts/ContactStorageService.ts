@@ -377,6 +377,7 @@ export class ContactStorageService {
       email?: string;
       address?: string;
       category?: string;
+      donodoZapName?: string | null;
     }
   ): Promise<Contact> {
     const contact = await prisma.contact.updateMany({
@@ -396,6 +397,8 @@ export class ContactStorageService {
         whatsappEmail: whatsappData.email || null,
         whatsappAddress: whatsappData.address || null,
         whatsappCategory: whatsappData.category || null,
+        // Se não tem nome e DonodoZap encontrou, usar o nome do DonodoZap
+        name: whatsappData.donodoZapName && !whatsappData.exists ? whatsappData.donodoZapName : undefined,
         lastWhatsappCheck: new Date(),
         updatedAt: new Date()
       }

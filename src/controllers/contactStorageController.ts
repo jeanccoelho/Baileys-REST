@@ -2,13 +2,16 @@ import { Request, Response } from 'express';
 import { ContactStorageService } from '../services/contacts/ContactStorageService';
 import { ContactResponse, CreateContactRequest, UpdateContactRequest, ValidateContactRequest, ImportResult, PaginatedApiResponse } from '../types/contacts';
 import whatsappService from '../services/whatsappService';
+import { DonodoZapService } from '../services/contacts/DonodoZapService';
 import logger from '../utils/logger';
 
 export class ContactStorageController {
   private contactService: ContactStorageService;
+  private donodoZapService: DonodoZapService;
 
   constructor() {
     this.contactService = new ContactStorageService();
+    this.donodoZapService = new DonodoZapService();
   }
 
   createContact = async (
@@ -410,6 +413,20 @@ export class ContactStorageController {
       // Validar número no WhatsApp
       const whatsappData = await whatsappService.validateNumber(userId, connection_id, contact.phone_number);
       
+      // Se tem WhatsApp e tem foto, tentar buscar nome no DonodoZap
+      let donodoZapName: string | null = null;
+      if (whatsappData.exists && whatsappData.picture) {
+        try {
+          donodoZapName = await this.donodoZapService.searchNamesByPhone(contact.phone_number);
+          if (donodoZapName) {
+            logger.info(`Nome encontrado no DonodoZap para ${contact.phone_number}: ${donodoZapName}`);
+          }
+        } catch (error) {
+          logger.warn(`Erro ao buscar nome no DonodoZap para ${contact.phone_number}:`, error);
+          // Não falhar a validação se DonodoZap falhar
+        }
+      }
+      
       // Atualizar dados do WhatsApp no contato
       const updatedContact = await this.contactService.updateWhatsAppData(userId, contact_id, {
         exists: whatsappData.exists,
@@ -422,14 +439,16 @@ export class ContactStorageController {
         website: whatsappData.website,
         email: whatsappData.email,
         address: whatsappData.address,
-        category: whatsappData.category
+        category: whatsappData.category,
+        donodoZapName
       });
 
       res.json({
         success: true,
         data: {
           contact: updatedContact,
-          whatsapp: whatsappData
+          whatsapp: whatsappData,
+          donodoZapName
         },
         pagination: {} as any,
         message: 'Contato validado no WhatsApp com sucesso'
