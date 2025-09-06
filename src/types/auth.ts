@@ -41,6 +41,7 @@ export interface AuthResponse {
     user?: Omit<User, 'password'>;
     token?: string;
     balance?: number;
+    role?: string;
     message?: string;
   };
   message?: string;

@@ -31,11 +31,16 @@ export class AuthController {
 
       const result = await this.userService.register({ name, email, password });
 
+      // Obter saldo atual do usuário (será 0.00 para novo usuário)
+      const balance = await this.balanceService.getBalance(result.user.id);
+
       res.status(201).json({
         success: true,
         data: {
           user: result.user,
           token: result.token,
+          balance: balance,
+          role: result.user.role,
           message: 'Usuário registrado com sucesso'
         },
         message: 'Registro realizado com sucesso'
@@ -69,11 +74,16 @@ export class AuthController {
 
       const result = await this.userService.login({ email, password });
 
+      // Obter saldo atual do usuário
+      const balance = await this.balanceService.getBalance(result.user.id);
+
       res.json({
         success: true,
         data: {
           user: result.user,
           token: result.token,
+          balance: balance,
+          role: result.user.role,
           message: 'Login realizado com sucesso'
         },
         message: 'Autenticação bem-sucedida'
@@ -241,7 +251,8 @@ export class AuthController {
         success: true,
         data: {
           user: user,
-          balance: balance
+          balance: balance,
+          role: user.role
         },
         message: 'Perfil recuperado com sucesso'
       });
