@@ -3,6 +3,7 @@ import { ContactStorageService } from '../services/contacts/ContactStorageServic
 import { ContactResponse, CreateContactRequest, UpdateContactRequest, ValidateContactRequest, ImportResult, PaginatedApiResponse } from '../types/contacts';
 import whatsappService from '../services/whatsappService';
 import { DonodoZapService } from '../services/contacts/DonodoZapService';
+import { InsufficientBalanceError } from '../types/monetization';
 import logger from '../utils/logger';
 
 export class ContactStorageController {
@@ -520,6 +521,16 @@ export class ContactStorageController {
       });
 
     } catch (error) {
+      // Tratar erro de saldo insuficiente
+      if (error instanceof InsufficientBalanceError) {
+        res.status(402).json({
+          success: false,
+          error: error.message,
+          message: 'Saldo insuficiente para validar contato no WhatsApp (0.10 créditos necessários)'
+        });
+        return;
+      }
+      
       logger.error('Erro ao validar contato no WhatsApp:', error);
       res.status(500).json({
         success: false,

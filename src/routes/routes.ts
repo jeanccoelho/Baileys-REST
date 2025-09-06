@@ -3,6 +3,7 @@ import multer from 'multer';
 import { Request, Response, NextFunction } from 'express';
 import authRoutes from './authRoutes';
 import contactStorageRoutes from './contactStorageRoutes';
+import balanceRoutes from './balanceRoutes';
 import { authenticate } from '../middleware/authMiddleware';
 import {
   sendMessage,
@@ -47,6 +48,9 @@ router.use('/auth', authRoutes);
 
 // Rotas de contatos armazenados
 router.use('/contacts-storage', contactStorageRoutes);
+
+// Rotas de saldo e transações
+router.use('/balance', balanceRoutes);
 
 // Rotas de mensagens (protegidas)
 router.post('/send-message', authenticate, asyncHandler(sendMessage));

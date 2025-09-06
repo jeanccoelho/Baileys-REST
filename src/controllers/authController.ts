@@ -1,13 +1,16 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/auth/UserService';
 import { AuthResponse, RegisterRequest, LoginRequest, ForgotPasswordRequest, ResetPasswordRequest, UpdatePasswordRequest } from '../types/auth';
+import { BalanceService } from '../services/monetization/BalanceService';
 import logger from '../utils/logger';
 
 export class AuthController {
   private userService: UserService;
+  private balanceService: BalanceService;
 
   constructor() {
     this.userService = new UserService();
+    this.balanceService = new BalanceService();
   }
 
   register = async (
@@ -231,10 +234,16 @@ export class AuthController {
         return;
       }
 
+      // Obter saldo atual do usuário
+      const balance = await this.balanceService.getBalance(userId);
+
       res.json({
         success: true,
         data: {
-          user
+          user: {
+            ...user,
+            balance
+          }
         },
         message: 'Perfil recuperado com sucesso'
       });

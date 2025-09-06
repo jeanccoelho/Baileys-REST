@@ -15,6 +15,7 @@ model User {
   name             String
   email            String    @unique
   password         String
+  balance          Decimal   @default(0.00) @db.Decimal(10, 2)
   resetToken       String?
   resetTokenExpiry DateTime?
   createdAt        DateTime  @default(now())
@@ -22,10 +23,30 @@ model User {
 
   // Relacionamentos
   contacts Contact[]
+  transactions Transaction[]
 
   @@map("users")
 }
 
+model Transaction {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  amount          Decimal  @db.Decimal(10, 2)
+  type            String   // 'credit', 'debit'
+  category        String   // 'connection', 'validation', 'deposit', 'refund'
+  description     String?
+  relatedEntityId String?  @map("related_entity_id")
+  balanceBefore   Decimal  @map("balance_before") @db.Decimal(10, 2)
+  balanceAfter    Decimal  @map("balance_after") @db.Decimal(10, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("transactions")
+}
 model Contact {
   id                     String    @id @default(cuid())
   userId                 String    @map("user_id")

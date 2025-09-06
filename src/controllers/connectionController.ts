@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import whatsappService from '../services/whatsappService';
 import { ApiResponse, ConnectionRequest, ValidateConnectionRequest } from '../types/types';
+import { InsufficientBalanceError } from '../types/monetization';
 import logger from '../utils/logger';
 
 export const restartConnection = async (
@@ -99,6 +100,16 @@ export const createConnection = async (
       message: 'Connection created successfully'
     });
   } catch (error) {
+    // Tratar erro de saldo insuficiente
+    if (error instanceof InsufficientBalanceError) {
+      res.status(402).json({
+        success: false,
+        error: error.message,
+        message: 'Saldo insuficiente para criar conexão (2 créditos necessários)'
+      });
+      return;
+    }
+    
     logger.error('Error creating connection:', error);
     res.status(500).json({
       success: false,

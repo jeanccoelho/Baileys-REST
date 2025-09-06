@@ -2,14 +2,18 @@ import { WhatsAppConnection, Contact as ContactType, Group, ValidatedNumber } fr
 import { ConnectionManager } from './connection/ConnectionManager';
 import { MessageService } from './messaging/MessageService';
 import { ContactService } from './contacts/ContactService';
+import { BalanceService } from './monetization/BalanceService';
+import { InsufficientBalanceError } from '../types/monetization';
 
 class WhatsAppService {
   private connectionManager: ConnectionManager;
   private messageService: MessageService;
   private contactService: ContactService;
+  private balanceService: BalanceService;
 
   constructor() {
     this.connectionManager = new ConnectionManager();
+    this.balanceService = new BalanceService();
     
     // Passar a referência das instâncias para os outros serviços
     const instances = (this.connectionManager as any).instances;
@@ -28,7 +32,46 @@ class WhatsAppService {
 
   // Métodos de conexão
   async createConnection(userId: string, pairingMethod: 'qr' | 'code' = 'qr', phoneNumber?: string): Promise<{ connectionId: string; qrCode?: string; pairingCode?: string }> {
-    return this.connectionManager.createConnection(userId, pairingMethod, phoneNumber);
+    // Verificar saldo antes de criar conexão (2 créditos)
+    try {
+      await this.balanceService.deductBalance(
+        userId, 
+        2, 
+        'connection', 
+        'Criação de nova conexão WhatsApp'
+      );
+    } catch (error) {
+      if (error instanceof InsufficientBalanceError) {
+        throw error;
+      }
+      logger.error('Erro ao deduzir saldo para conexão:', error);
+      throw new Error('Erro interno ao processar pagamento');
+    }
+
+    try {
+      const result = await this.connectionManager.createConnection(userId, pairingMethod, phoneNumber);
+      
+      // Registrar ID da conexão na transação (se possível)
+      // Nota: Como a transação já foi criada, não podemos atualizar facilmente
+      // Em uma implementação mais robusta, poderíamos fazer isso em uma única transação
+      
+      return result;
+    } catch (error) {
+      // Se falhou ao criar conexão, reembolsar os créditos
+      try {
+        await this.balanceService.addBalance(
+          userId,
+          2,
+          'refund',
+          'Reembolso por falha na criação de conexão'
+        );
+        logger.info(`Reembolso de 2 créditos para usuário ${userId} por falha na conexão`);
+      } catch (refundError) {
+        logger.error('Erro ao reembolsar créditos:', refundError);
+      }
+      
+      throw error;
+    }
   }
 
   async validateConnection(userId: string, connectionId: string, code: string): Promise<boolean> {
@@ -91,6 +134,23 @@ class WhatsAppService {
   }
 
   async validateNumber(userId: string, connectionId: string, number: string): Promise<ValidatedNumber> {
+    // Verificar saldo antes de validar número (0.10 créditos)
+    try {
+      await this.balanceService.deductBalance(
+        userId, 
+        0.10, 
+        'validation', 
+        `Validação do número ${number}`,
+        connectionId
+      );
+    } catch (error) {
+      if (error instanceof InsufficientBalanceError) {
+        throw error;
+      }
+      logger.error('Erro ao deduzir saldo para validação:', error);
+      throw new Error('Erro interno ao processar pagamento');
+    }
+
     return this.contactService.validateNumber(userId, connectionId, number);
   }
 }

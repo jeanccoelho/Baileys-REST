@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import whatsappService from '../services/whatsappService';
 import { ApiResponse, SendMessageRequest, ValidateNumberRequest } from '../types/types';
+import { InsufficientBalanceError } from '../types/monetization';
 import logger from '../utils/logger';
 
 export const sendMessage = async (
@@ -151,6 +152,16 @@ export const validateNumber = async (
       message: 'Number validated successfully'
     });
   } catch (error) {
+    // Tratar erro de saldo insuficiente
+    if (error instanceof InsufficientBalanceError) {
+      res.status(402).json({
+        success: false,
+        error: error.message,
+        message: 'Saldo insuficiente para validar número (0.10 créditos necessários)'
+      });
+      return;
+    }
+    
     logger.error('Error validating number:', error);
     res.status(500).json({
       success: false,
