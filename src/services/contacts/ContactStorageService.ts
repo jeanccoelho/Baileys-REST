@@ -380,28 +380,41 @@ export class ContactStorageService {
       donodoZapName?: string | null;
     }
   ): Promise<Contact> {
+    // Preparar dados para atualização
+    const updateData: any = {
+      whatsappExists: whatsappData.exists,
+      whatsappJid: whatsappData.jid || null,
+      whatsappStatus: whatsappData.status || null,
+      whatsappPicture: whatsappData.picture || null,
+      whatsappBusiness: whatsappData.business || false,
+      whatsappVerifiedName: whatsappData.verifiedName || null,
+      whatsappBusinessHours: whatsappData.businessHours || null,
+      whatsappWebsite: whatsappData.website || null,
+      whatsappEmail: whatsappData.email || null,
+      whatsappAddress: whatsappData.address || null,
+      whatsappCategory: whatsappData.category || null,
+      lastWhatsappCheck: new Date(),
+      updatedAt: new Date()
+    };
+
+    // Se contato não tem nome e DonodoZap encontrou um nome, usar o nome do DonodoZap
+    if (whatsappData.donodoZapName) {
+      // Buscar o contato atual para verificar se já tem nome
+      const currentContact = await prisma.contact.findUnique({
+        where: { id: contactId }
+      });
+      
+      if (currentContact && (!currentContact.name || currentContact.name.trim() === '')) {
+        updateData.name = whatsappData.donodoZapName;
+      }
+    }
+
     const contact = await prisma.contact.updateMany({
       where: {
         id: contactId,
         userId
       },
-      data: {
-        whatsappExists: whatsappData.exists,
-        whatsappJid: whatsappData.jid || null,
-        whatsappStatus: whatsappData.status || null,
-        whatsappPicture: whatsappData.picture || null,
-        whatsappBusiness: whatsappData.business || false,
-        whatsappVerifiedName: whatsappData.verifiedName || null,
-        whatsappBusinessHours: whatsappData.businessHours || null,
-        whatsappWebsite: whatsappData.website || null,
-        whatsappEmail: whatsappData.email || null,
-        whatsappAddress: whatsappData.address || null,
-        whatsappCategory: whatsappData.category || null,
-        // Se não tem nome e DonodoZap encontrou, usar o nome do DonodoZap
-        name: whatsappData.donodoZapName && !whatsappData.exists ? whatsappData.donodoZapName : undefined,
-        lastWhatsappCheck: new Date(),
-        updatedAt: new Date()
-      }
+      data: updateData
     });
 
     if (contact.count === 0) {
