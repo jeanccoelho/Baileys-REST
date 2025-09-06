@@ -1,13 +1,16 @@
 import { Request, Response } from 'express';
 import { BalanceService } from '../services/monetization/BalanceService';
+import { UserService } from '../services/auth/UserService';
 import { BalanceResponse, AddBalanceRequest, TransactionFilters } from '../types/monetization';
 import logger from '../utils/logger';
 
 export class BalanceController {
   private balanceService: BalanceService;
+  private userService: UserService;
 
   constructor() {
     this.balanceService = new BalanceService();
+    this.userService = new UserService();
   }
 
   getBalance = async (
