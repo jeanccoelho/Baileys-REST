@@ -399,6 +399,71 @@ export class ContactStorageController {
         return;
       }
 
+      // Verificar se a conexão existe e está ativa
+      let connection = whatsappService.getConnection(userId, connection_id);
+      
+      if (!connection) {
+        res.status(404).json({
+          success: false,
+          error: 'Conexão não encontrada',
+          message: 'A conexão WhatsApp especificada não existe'
+        });
+        return;
+      }
+
+      // Se a conexão está desconectada, tentar reconectar
+      if (connection.status === 'disconnected') {
+        logger.info(`Conexão ${connection_id} desconectada, tentando reconectar...`);
+        
+        try {
+          await whatsappService.restartConnection(userId, connection_id);
+          
+          // Aguardar reconexão (máximo 30 segundos)
+          let attempts = 0;
+          const maxAttempts = 30; // 30 segundos
+          
+          while (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Aguardar 1 segundo
+            
+            connection = whatsappService.getConnection(userId, connection_id);
+            if (connection && connection.status === 'connected') {
+              logger.info(`Conexão ${connection_id} reconectada com sucesso`);
+              break;
+            }
+            
+            attempts++;
+          }
+          
+          // Verificar se conseguiu reconectar
+          if (!connection || connection.status !== 'connected') {
+            res.status(503).json({
+              success: false,
+              error: 'Falha na reconexão',
+              message: 'Não foi possível reconectar ao WhatsApp. Tente novamente em alguns minutos.'
+            });
+            return;
+          }
+          
+        } catch (reconnectError) {
+          logger.error(`Erro ao reconectar ${connection_id}:`, reconnectError);
+          res.status(503).json({
+            success: false,
+            error: 'Erro na reconexão',
+            message: 'Falha ao tentar reconectar ao WhatsApp'
+          });
+          return;
+        }
+      }
+
+      // Verificar se a conexão está em estado válido para validação
+      if (connection.status !== 'connected') {
+        res.status(503).json({
+          success: false,
+          error: 'Conexão não disponível',
+          message: `Conexão WhatsApp está em estado: ${connection.status}. Aguarde a conexão ou tente reconectar.`
+        });
+        return;
+      }
       // Buscar contato
       const contact = await this.contactService.getContactById(userId, contact_id);
       if (!contact) {
