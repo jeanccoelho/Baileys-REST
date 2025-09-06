@@ -16,6 +16,17 @@ export interface BalanceResponse {
   data?: {
     balance?: number;
     transactions?: Transaction[];
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+    stats?: {
+      totalSpent: number;
+      totalDeposited: number;
+      connectionsCreated: number;
+      numbersValidated: number;
+      currentBalance: number;
+    };
     message?: string;
   };
   message?: string;
