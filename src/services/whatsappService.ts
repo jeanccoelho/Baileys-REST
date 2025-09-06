@@ -4,6 +4,7 @@ import { MessageService } from './messaging/MessageService';
 import { ContactService } from './contacts/ContactService';
 import { BalanceService } from './monetization/BalanceService';
 import { InsufficientBalanceError } from '../types/monetization';
+import logger from '../utils/logger';
 
 class WhatsAppService {
   private connectionManager: ConnectionManager;

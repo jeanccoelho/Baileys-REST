@@ -240,10 +240,8 @@ export class AuthController {
       res.json({
         success: true,
         data: {
-          user: {
-            ...user,
-            balance
-          }
+          user: user,
+          balance: balance
         },
         message: 'Perfil recuperado com sucesso'
       });

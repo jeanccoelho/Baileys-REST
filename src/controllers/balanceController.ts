@@ -128,7 +128,10 @@ export class BalanceController {
         success: true,
         data: {
           transactions: result.transactions,
-          ...result
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages
         },
         message: 'Transações recuperadas com sucesso'
       });
@@ -163,7 +166,11 @@ export class BalanceController {
 
       res.json({
         success: true,
-        data: stats,
+        data: {
+          balance: stats.currentBalance,
+          message: 'Estatísticas recuperadas com sucesso',
+          stats: stats
+        },
         message: 'Estatísticas recuperadas com sucesso'
       });
 
