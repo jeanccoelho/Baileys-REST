@@ -34,10 +34,13 @@ export class AuthController {
       // Obter saldo atual do usuário (será 0.00 para novo usuário)
       const balance = await this.balanceService.getBalance(result.user.id);
 
+      // Remover balance do objeto user para evitar duplicação
+      const { balance: userBalance, ...userWithoutBalance } = result.user as any;
+
       res.status(201).json({
         success: true,
         data: {
-          user: result.user,
+          user: userWithoutBalance,
           token: result.token,
           balance: balance,
           role: result.user.role,
@@ -77,10 +80,13 @@ export class AuthController {
       // Obter saldo atual do usuário
       const balance = await this.balanceService.getBalance(result.user.id);
 
+      // Remover balance do objeto user para evitar duplicação
+      const { balance: userBalance, ...userWithoutBalance } = result.user as any;
+
       res.json({
         success: true,
         data: {
-          user: result.user,
+          user: userWithoutBalance,
           token: result.token,
           balance: balance,
           role: result.user.role,
@@ -247,10 +253,13 @@ export class AuthController {
       // Obter saldo atual do usuário
       const balance = await this.balanceService.getBalance(userId);
 
+      // Remover balance do objeto user para evitar duplicação
+      const { balance: userBalance, ...userWithoutBalance } = user as any;
+
       res.json({
         success: true,
         data: {
-          user: user,
+          user: userWithoutBalance,
           balance: balance,
           role: user.role
         },
